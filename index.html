@@ -74,6 +74,52 @@ let carrinhoBloqueado=false;
 let pagamentoSelecionado=null;
 let comprovantePix=null;
 
+/* === PAGAMENTOS === */
+function renderPag(){
+  const pagamentosDiv=document.getElementById('pagamentos');
+  pagamentosDiv.innerHTML='';
+  if(!carrinhoBloqueado) return;
+
+  const pagamentos={
+    dinheiro:{
+      titulo:'DINHEIRO',
+      mensagem:'Selecionando pagamento em dinheiro, seu pedido só estará garantido após pagamento presencial no caixa'
+    },
+    pix:{
+      titulo:'PIX',
+      mensagem:'Favor enviar comprovante do PIX para validar o pedido',
+      chave:'chave-pix@exemplo.com'
+    }
+  };
+
+  Object.keys(pagamentos).forEach(k=>{
+    const p=pagamentos[k];
+    const d=document.createElement('div');
+    d.className='pagamento-opcao'+(pagamentoSelecionado===k?' selecionado':'');
+    d.onclick=()=>{ 
+      pagamentoSelecionado = pagamentoSelecionado===k ? null : k;
+      if(k!=='pix') comprovantePix=null;
+      renderPag();
+    };
+
+    let html=`<strong>${p.titulo}</strong><div>${p.mensagem}</div>`;
+    if(p.chave) html+=`<div class="pix-chave">${p.chave}</div>`;
+
+    if(k==='pix' && pagamentoSelecionado==='pix'){
+      html+=`
+        <div style="margin-top:6px">
+          <input type="file" accept="image/*"
+            onclick="event.stopPropagation()"
+            onchange="comprovantePix=this.files[0]">
+        </div>`;
+    }
+
+    d.innerHTML=html;
+    pagamentosDiv.appendChild(d);
+  });
+}
+
+/* === FINALIZAR === */
 document.getElementById('finalizar').onclick=function(){
   if(carrinho.length===0){
     alert('Carrinho vazio');
@@ -98,11 +144,11 @@ document.getElementById('finalizar').onclick=function(){
   carrinho.forEach(i=>{
     msg+=`${i.qtd}x ${i.nome}${i.obs?'\nObs: '+i.obs:''}\n`;
   });
-  msg+=`\nPagamento: ${pagamentoSelecionado}\nTotal: R$ ${document.getElementById('total').textContent}`;
+  msg+=`\nPagamento: ${pagamentoSelecionado.toUpperCase()}\nTotal: R$ ${document.getElementById('total').textContent}`;
 
   window.open('https://wa.me/5551981894966?text='+encodeURIComponent(msg),'_blank');
 };
 </script>
-
 </body>
 </html>
+
