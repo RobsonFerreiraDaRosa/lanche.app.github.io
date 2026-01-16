@@ -69,145 +69,38 @@ ul { list-style:none; padding:0; }
 </div>
 
 <script>
-const STORAGE_KEY='carrinho_tribo';
-const STATE_KEY='estado_tribo';
-
-let carrinho=JSON.parse(localStorage.getItem(STORAGE_KEY))||[];
-let estado=JSON.parse(localStorage.getItem(STATE_KEY))||{bloqueado:false,pagamento:null};
-let carrinhoBloqueado=estado.bloqueado;
-let pagamentoSelecionado=estado.pagamento;
+let carrinho=[];
+let carrinhoBloqueado=false;
+let pagamentoSelecionado=null;
 let comprovantePix=null;
 
-function salvar(){
-  localStorage.setItem(STORAGE_KEY,JSON.stringify(carrinho));
-  localStorage.setItem(STATE_KEY,JSON.stringify({bloqueado:carrinhoBloqueado,pagamento:pagamentoSelecionado}));
-}
+document.getElementById('finalizar').onclick=function(){
+  if(carrinho.length===0){
+    alert('Carrinho vazio');
+    return;
+  }
+  if(!pagamentoSelecionado){
+    alert('Selecione a forma de pagamento');
+    return;
+  }
+  if(pagamentoSelecionado==='pix' && !comprovantePix){
+    alert('Envie o comprovante do PIX');
+    return;
+  }
 
-const pagamentos={
-  dinheiro:{titulo:'DINHEIRO',mensagem:'Selecionando pagamento em dinheiro, seu pedido só estará garantido após pagamento presencial no caixa'},
-  pix:{titulo:'PIX',chave:'chave-pix@exemplo.com',mensagem:'Favor enviar comprovante do PIX para validar o pedido'}
-};
-
-const menu={
-  Salgados:[
-    {nome:'Mini Pizza Frango',preco:13,desc:'Molho, frango, cebola e mussarela',obs:true},
-    {nome:'Mini Pizza Strogonoff Carne',preco:13,desc:'Molho, carne, mussarela',obs:false}
-  ],
-  Doces:[
-    {nome:'Mini Pizza Chocolate Preto',preco:13,desc:'Chocolate ao Leite',obs:false},
-    {nome:'Mini Pizza Chocolate Branco',preco:13,desc:'Chocolate Branco',obs:false}
-  ],
-  Bebidas:[
-    {nome:'Pitchulinha Fruki Guaraná 200ml',preco:2.5,desc:'Guaraná 200ml',obs:false},
-    {nome:'Pitchulinha Coca-Cola Zero 200ml',preco:2.5,desc:'Coca Zero 200ml',obs:false},
-    {nome:'Pitchulinha Coca-Cola 200ml',preco:2.5,desc:'Coca 200ml',obs:false}
-  ]
-};
-
-const menuDiv=document.getElementById('menu');
-Object.keys(menu).forEach(cat=>{
-  const b=document.createElement('div');
-  b.className='categoria';
-  b.innerHTML=`<h2>${cat}</h2>`;
-  const g=document.createElement('div');
-  g.className='cardapio';
-
-  menu[cat].forEach(item=>{
-    let q=0;
-    const d=document.createElement('div');
-    d.className='item';
-    d.innerHTML=`
-      <div class="item-header">
-        <h3>${item.nome}</h3>
-        <div class="qtd">
-          <button class="menos" style="display:none">−</button>
-          <span>0</span>
-          <button class="mais">+</button>
-        </div>
-      </div>
-      <div class="desc">${item.desc}</div>
-      <div class="linha-preco">
-        <div class="preco">R$ ${item.preco.toFixed(2)}</div>
-        <button class="add">Adicionar</button>
-      </div>`;
-    const s=d.querySelector('span'),m=d.querySelector('.menos');
-    d.querySelector('.mais').onclick=()=>{ if(carrinhoBloqueado)return; q++; s.textContent=q; m.style.display='inline-block'; };
-    m.onclick=()=>{ if(carrinhoBloqueado)return; if(q>0)q--; s.textContent=q; if(q===0)m.style.display='none'; };
-    d.querySelector('.add').onclick=()=>{
-      if(!q||carrinhoBloqueado)return;
-      carrinho.push({nome:item.nome,preco:item.preco,qtd:q,obs:item.obs?'':null});
-      salvar(); q=0; s.textContent=0; m.style.display='none'; atualizar();
-    };
-    g.appendChild(d);
-  });
-  b.appendChild(g);
-  menuDiv.appendChild(b);
-});
-
-const lista=document.getElementById('lista');
-const totalSpan=document.getElementById('total');
-const btnPagar=document.getElementById('btnPagar');
-const btnEditar=document.getElementById('btnEditar');
-const pagamentosDiv=document.getElementById('pagamentos');
-
-function atualizar(){
-  lista.innerHTML='';
-  let t=0;
-  carrinho.forEach((i,x)=>{
-    t+=i.preco*i.qtd;
-    lista.innerHTML+=`
-      <li>
-        <div class="linha-carrinho">
-          ${i.qtd}x ${i.nome}
-          ${!carrinhoBloqueado?`<button class="remover" onclick="carrinho.splice(${x},1);salvar();atualizar()">X</button>`:''}
-        </div>
-        ${i.obs!==null?`
-        <div class="obs-carrinho">
-          <input maxlength="48" placeholder="Observação" ${carrinhoBloqueado?'disabled':''}
-            value="${i.obs}" oninput="carrinho[${x}].obs=this.value;salvar()">
-        </div>`:''}
-      </li>`;
-  });
-  totalSpan.textContent=t.toFixed(2);
-  btnPagar.style.display=carrinho.length&&!carrinhoBloqueado?'block':'none';
-  btnEditar.style.display=carrinhoBloqueado?'block':'none';
-}
-atualizar();
-
-btnPagar.onclick=()=>{ carrinhoBloqueado=true; salvar(); renderPag(); atualizar(); };
-btnEditar.onclick=()=>{ carrinhoBloqueado=false; pagamentoSelecionado=null; comprovantePix=null; salvar(); renderPag(); atualizar(); };
-
-function renderPag(){
-  pagamentosDiv.innerHTML='';
-  if(!carrinhoBloqueado)return;
-  Object.keys(pagamentos).forEach(k=>{
-    const p=pagamentos[k];
-    const d=document.createElement('div');
-    d.className='pagamento-opcao'+(pagamentoSelecionado===k?' selecionado':'');
-    d.onclick=()=>{ pagamentoSelecionado=pagamentoSelecionado===k?null:k; salvar(); renderPag(); };
-    d.innerHTML=`<strong>${p.titulo}</strong><div>${p.mensagem}</div>${p.chave?`<div class="pix-chave">${p.chave}</div>`:''}`;
-    if(k==='pix'){
-      const inp=document.createElement('input');
-      inp.type='file';
-      inp.accept='image/*,application/pdf';
-      inp.style.marginTop='6px';
-      inp.onchange=e=>{ comprovantePix=e.target.files[0]||null; };
-      d.appendChild(inp);
-    }
-    pagamentosDiv.appendChild(d);
-  });
-}
-renderPag();
-
-document.getElementById('finalizar').onclick=()=>{
   const tel=document.getElementById('telefone').value;
-  if(!/^\d{11}$/.test(tel)){ alert('Informe o telefone com DDD e 9 dígitos'); return; }
-  if(pagamentoSelecionado==='pix'&&!comprovantePix){ alert('Envie o comprovante do PIX'); return; }
+  if(!/^\d{11}$/.test(tel)){
+    alert('Informe o telefone com DDD e 9 dígitos');
+    return;
+  }
 
   let msg=`📞 ${tel}\n👤 ${document.getElementById('nomeCliente').value}\n\n🧾 *NOVO PEDIDO*\n\n`;
-  carrinho.forEach(i=>{ msg+=`${i.qtd}x ${i.nome}${i.obs?'\nObs: '+i.obs:''}\n`; });
-  msg+=`\nPagamento: ${pagamentos[pagamentoSelecionado].titulo}\nTotal: R$ ${totalSpan.textContent}`;
-  window.open('https://wa.me/5551981894966?text='+encodeURIComponent(msg));
+  carrinho.forEach(i=>{
+    msg+=`${i.qtd}x ${i.nome}${i.obs?'\nObs: '+i.obs:''}\n`;
+  });
+  msg+=`\nPagamento: ${pagamentoSelecionado}\nTotal: R$ ${document.getElementById('total').textContent}`;
+
+  window.open('https://wa.me/5551981894966?text='+encodeURIComponent(msg),'_blank');
 };
 </script>
 
