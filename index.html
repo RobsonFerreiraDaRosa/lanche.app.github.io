@@ -76,7 +76,6 @@ let carrinho=JSON.parse(localStorage.getItem(STORAGE_KEY))||[];
 let estado=JSON.parse(localStorage.getItem(STATE_KEY))||{bloqueado:false,pagamento:null};
 let carrinhoBloqueado=estado.bloqueado;
 let pagamentoSelecionado=estado.pagamento;
-let comprovantePix=null;
 
 function salvar(){
   localStorage.setItem(STORAGE_KEY,JSON.stringify(carrinho));
@@ -175,33 +174,17 @@ function atualizar(){
 atualizar();
 
 btnPagar.onclick=()=>{ carrinhoBloqueado=true; salvar(); renderPag(); atualizar(); };
-btnEditar.onclick=()=>{ carrinhoBloqueado=false; pagamentoSelecionado=null; comprovantePix=null; salvar(); renderPag(); atualizar(); };
+btnEditar.onclick=()=>{ carrinhoBloqueado=false; pagamentoSelecionado=null; salvar(); renderPag(); atualizar(); };
 
 function renderPag(){
   pagamentosDiv.innerHTML='';
   if(!carrinhoBloqueado)return;
-
   Object.keys(pagamentos).forEach(k=>{
     const p=pagamentos[k];
     const d=document.createElement('div');
     d.className='pagamento-opcao'+(pagamentoSelecionado===k?' selecionado':'');
-    d.onclick=()=>{ pagamentoSelecionado=k; salvar(); renderPag(); };
+    d.onclick=()=>{ pagamentoSelecionado=pagamentoSelecionado===k?null:k; salvar(); renderPag(); };
     d.innerHTML=`<strong>${p.titulo}</strong><div>${p.mensagem}</div>${p.chave?`<div class="pix-chave">${p.chave}</div>`:''}`;
-
-    if(k==='pix'){
-      const inp=document.createElement('input');
-      inp.type='file';
-      inp.accept='image/*,application/pdf';
-      inp.style.marginTop='6px';
-      inp.onclick=e=>e.stopPropagation();
-      inp.onchange=e=>{
-        comprovantePix=e.target.files[0]||null;
-        pagamentoSelecionado='pix';
-        salvar();
-        renderPag();
-      };
-      d.appendChild(inp);
-    }
     pagamentosDiv.appendChild(d);
   });
 }
@@ -210,7 +193,7 @@ renderPag();
 document.getElementById('finalizar').onclick=()=>{
   const tel=document.getElementById('telefone').value;
   if(!/^\d{11}$/.test(tel)){ alert('Informe o telefone com DDD e 9 dígitos'); return; }
-  if(pagamentoSelecionado==='pix'&&!comprovantePix){ alert('Envie o comprovante do PIX'); return; }
+  if(!pagamentoSelecionado){ alert('Selecione a forma de pagamento'); return; }
 
   let msg=`📞 ${tel}\n👤 ${document.getElementById('nomeCliente').value}\n\n🧾 *NOVO PEDIDO*\n\n`;
   carrinho.forEach(i=>{ msg+=`${i.qtd}x ${i.nome}${i.obs?'\nObs: '+i.obs:''}\n`; });
