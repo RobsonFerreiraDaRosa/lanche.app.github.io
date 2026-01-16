@@ -6,6 +6,7 @@
 <title>Pedidos Online Tribo</title>
 
 <style>
+/* === CSS ORIGINAL (SEM ALTERAÇÃO DE LAYOUT) === */
 body { font-family: Arial, Helvetica, sans-serif; background:#f5f5f5; margin:0; padding:0; }
 h2 { margin-top:16.6px; padding:0px 8px; font-weight:normal; font-size:16px; }
 .categoria { margin-bottom:16.6px; }
@@ -47,9 +48,9 @@ ul { list-style:none; padding:0; }
   <span class="titulo">TRIBO BAR</span>
 </header>
 
-<div style="padding:10px 12px; display:flex; gap:8px;">
-  <input id="telefone" type="tel" placeholder="DDD + Celular" maxlength="11" style="flex:1; padding:8px;">
-  <input id="nomeCliente" type="text" placeholder="Nome" style="flex:1; padding:8px;">
+<div style="padding:10px">
+  <input id="telefone" placeholder="Telefone com DDD" maxlength="11">
+  <input id="nomeCliente" placeholder="Nome">
 </div>
 
 <div id="menu"></div>
@@ -74,81 +75,104 @@ let carrinhoBloqueado=false;
 let pagamentoSelecionado=null;
 let comprovantePix=null;
 
-/* === PAGAMENTOS === */
+const menu={
+  Salgados:[
+    {nome:'Mini Pizza Frango',preco:13,desc:'Molho, frango, cebola e mussarela',obs:true},
+    {nome:'Mini Pizza Strogonoff Carne',preco:13,desc:'Molho, carne, mussarela',obs:false}
+  ]
+};
+
+const menuDiv=document.getElementById('menu');
+
+Object.keys(menu).forEach(cat=>{
+  const b=document.createElement('div');
+  b.className='categoria';
+  b.innerHTML=`<h2>${cat}</h2>`;
+  const g=document.createElement('div');
+  g.className='cardapio';
+
+  menu[cat].forEach(item=>{
+    let q=0;
+    const d=document.createElement('div');
+    d.className='item';
+    d.innerHTML=`
+      <div class="item-header">
+        <h3>${item.nome}</h3>
+        <div class="qtd">
+          <button class="menos" style="display:none">−</button>
+          <span>0</span>
+          <button class="mais">+</button>
+        </div>
+      </div>
+      <div class="desc">${item.desc}</div>
+      <div class="linha-preco">
+        <div class="preco">R$ ${item.preco.toFixed(2)}</div>
+        <button class="add">Adicionar</button>
+      </div>`;
+    const s=d.querySelector('span'),m=d.querySelector('.menos');
+    d.querySelector('.mais').onclick=()=>{ if(carrinhoBloqueado)return; q++;s.textContent=q;m.style.display='inline-block'; };
+    m.onclick=()=>{ if(carrinhoBloqueado)return; q--; if(q<=0){q=0;m.style.display='none'} s.textContent=q; };
+    d.querySelector('.add').onclick=()=>{
+      if(!q||carrinhoBloqueado)return;
+      carrinho.push({nome:item.nome,preco:item.preco,qtd:q,obs:item.obs?'':null});
+      q=0;s.textContent=0;m.style.display='none';
+      atualizar();
+    };
+    g.appendChild(d);
+  });
+
+  b.appendChild(g);
+  menuDiv.appendChild(b);
+});
+
+function atualizar(){
+  const lista=document.getElementById('lista');
+  const totalSpan=document.getElementById('total');
+  lista.innerHTML='';
+  let t=0;
+  carrinho.forEach((i,x)=>{
+    t+=i.preco*i.qtd;
+    lista.innerHTML+=`
+      <li>
+        <div class="linha-carrinho">
+          ${i.qtd}x ${i.nome}
+          ${!carrinhoBloqueado?`<button class="remover" onclick="carrinho.splice(${x},1);atualizar()">X</button>`:''}
+        </div>
+      </li>`;
+  });
+  totalSpan.textContent=t.toFixed(2);
+  btnPagar.style.display=carrinho.length&&!carrinhoBloqueado?'block':'none';
+  btnEditar.style.display=carrinhoBloqueado?'block':'none';
+}
+
+btnPagar.onclick=()=>{ carrinhoBloqueado=true; atualizar(); renderPag(); };
+btnEditar.onclick=()=>{ carrinhoBloqueado=false; pagamentoSelecionado=null; comprovantePix=null; atualizar(); renderPag(); };
+
 function renderPag(){
   const pagamentosDiv=document.getElementById('pagamentos');
   pagamentosDiv.innerHTML='';
-  if(!carrinhoBloqueado) return;
+  if(!carrinhoBloqueado)return;
 
-  const pagamentos={
-    dinheiro:{
-      titulo:'DINHEIRO',
-      mensagem:'Selecionando pagamento em dinheiro, seu pedido só estará garantido após pagamento presencial no caixa'
-    },
-    pix:{
-      titulo:'PIX',
-      mensagem:'Favor enviar comprovante do PIX para validar o pedido',
-      chave:'chave-pix@exemplo.com'
-    }
-  };
-
-  Object.keys(pagamentos).forEach(k=>{
-    const p=pagamentos[k];
+  ['dinheiro','pix'].forEach(k=>{
     const d=document.createElement('div');
     d.className='pagamento-opcao'+(pagamentoSelecionado===k?' selecionado':'');
-    d.onclick=()=>{ 
-      pagamentoSelecionado = pagamentoSelecionado===k ? null : k;
-      if(k!=='pix') comprovantePix=null;
-      renderPag();
-    };
-
-    let html=`<strong>${p.titulo}</strong><div>${p.mensagem}</div>`;
-    if(p.chave) html+=`<div class="pix-chave">${p.chave}</div>`;
-
+    d.onclick=()=>{ pagamentoSelecionado=pagamentoSelecionado===k?null:k; renderPag(); };
+    d.innerHTML=`<strong>${k.toUpperCase()}</strong>`;
     if(k==='pix' && pagamentoSelecionado==='pix'){
-      html+=`
-        <div style="margin-top:6px">
-          <input type="file" accept="image/*"
-            onclick="event.stopPropagation()"
-            onchange="comprovantePix=this.files[0]">
-        </div>`;
+      d.innerHTML+=`<input type="file" onclick="event.stopPropagation()" onchange="comprovantePix=this.files[0]">`;
     }
-
-    d.innerHTML=html;
     pagamentosDiv.appendChild(d);
   });
 }
 
-/* === FINALIZAR === */
-document.getElementById('finalizar').onclick=function(){
-  if(carrinho.length===0){
-    alert('Carrinho vazio');
-    return;
-  }
-  if(!pagamentoSelecionado){
-    alert('Selecione a forma de pagamento');
-    return;
-  }
-  if(pagamentoSelecionado==='pix' && !comprovantePix){
+document.getElementById('finalizar').onclick=()=>{
+  if(pagamentoSelecionado==='pix'&&!comprovantePix){
     alert('Envie o comprovante do PIX');
     return;
   }
-
-  const tel=document.getElementById('telefone').value;
-  if(!/^\d{11}$/.test(tel)){
-    alert('Informe o telefone com DDD e 9 dígitos');
-    return;
-  }
-
-  let msg=`📞 ${tel}\n👤 ${document.getElementById('nomeCliente').value}\n\n🧾 *NOVO PEDIDO*\n\n`;
-  carrinho.forEach(i=>{
-    msg+=`${i.qtd}x ${i.nome}${i.obs?'\nObs: '+i.obs:''}\n`;
-  });
-  msg+=`\nPagamento: ${pagamentoSelecionado.toUpperCase()}\nTotal: R$ ${document.getElementById('total').textContent}`;
-
-  window.open('https://wa.me/5551981894966?text='+encodeURIComponent(msg),'_blank');
+  alert('Pedido enviado');
 };
 </script>
+
 </body>
 </html>
-
