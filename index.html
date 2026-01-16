@@ -198,7 +198,19 @@ document.getElementById('finalizar').onclick=()=>{
   let msg=`📞 ${tel}\n👤 ${document.getElementById('nomeCliente').value}\n\n🧾 *NOVO PEDIDO*\n\n`;
   carrinho.forEach(i=>{ msg+=`${i.qtd}x ${i.nome}${i.obs?'\nObs: '+i.obs:''}\n`; });
   msg+=`\nPagamento: ${pagamentos[pagamentoSelecionado].titulo}\nTotal: R$ ${totalSpan.textContent}`;
+
   window.open('https://wa.me/5551981894966?text='+encodeURIComponent(msg));
+
+  /* === LIMPAR TELA APÓS ENVIO === */
+  carrinho=[];
+  carrinhoBloqueado=false;
+  pagamentoSelecionado=null;
+  document.getElementById('telefone').value='';
+  document.getElementById('nomeCliente').value='';
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(STATE_KEY);
+  renderPag();
+  atualizar();
 };
 </script>
 
