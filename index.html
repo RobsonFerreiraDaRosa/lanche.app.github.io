@@ -29,7 +29,7 @@ ul { list-style:none; padding:0; }
 .obs-carrinho input { width:100%; padding:6px; margin-top:6px; font-size:14px; }
 .pagamento-opcao { border:1px solid #ddd; border-radius:6px; padding:10px; margin-bottom:8px; cursor:pointer; transition:.2s; }
 .pagamento-opcao.selecionado { background:#d32f2f; color:#fff; border-color:#d32f2f; }
-.pix-chave { font-size:13px; margin-top:4px; }
+.pix-chave { font-size:13px; margin-top:6px; word-break:break-all; }
 #finalizar { background:#128c7e; color:#fff; padding:12px; border:none; width:100%; border-radius:6px; font-size:16px; }
 #btnPagar { background:#25d366; color:#fff; border:none; width:100%; padding:12px; border-radius:6px; font-size:16px; margin:10px 0; display:none; }
 #btnEditar { background:#ff9800; color:#fff; border:none; width:100%; padding:10px; border-radius:6px; font-size:14px; margin-bottom:10px; display:none; }
@@ -84,8 +84,12 @@ function salvar(){
 
 const pagamentos={
   dinheiro:{titulo:'DINHEIRO',mensagem:'Selecionando pagamento em dinheiro, seu pedido só estará garantido após pagamento presencial no caixa'},
-  pix:{titulo:'PIX',chave:'chave-pix@exemplo.com',mensagem:'Favor enviar comprovante do PIX para validar o pedido'}
+  pix:{titulo:'PIX',mensagem:'Favor realizar o pagamento via PIX antes de enviar o pedido'}
 };
+
+function gerarPix(chave,valor){
+  return `00020126360014BR.GOV.BCB.PIX01${chave.length}${chave}52040000530398654${valor.toFixed(2).replace('.','').length}${valor.toFixed(2).replace('.','')}5802BR5909TRIBO BAR6008LAJEADO62070503***`;
+}
 
 const menu={
   Salgados:[
@@ -104,6 +108,7 @@ const menu={
 };
 
 const menuDiv=document.getElementById('menu');
+
 Object.keys(menu).forEach(cat=>{
   const b=document.createElement('div');
   b.className='categoria';
@@ -129,6 +134,7 @@ Object.keys(menu).forEach(cat=>{
         <div class="preco">R$ ${item.preco.toFixed(2)}</div>
         <button class="add">Adicionar</button>
       </div>`;
+
     const s=d.querySelector('span'),m=d.querySelector('.menos');
     d.querySelector('.mais').onclick=()=>{ if(carrinhoBloqueado)return; q++; s.textContent=q; m.style.display='inline-block'; };
     m.onclick=()=>{ if(carrinhoBloqueado)return; if(q>0)q--; s.textContent=q; if(q===0)m.style.display='none'; };
@@ -184,7 +190,12 @@ function renderPag(){
     const d=document.createElement('div');
     d.className='pagamento-opcao'+(pagamentoSelecionado===k?' selecionado':'');
     d.onclick=()=>{ pagamentoSelecionado=pagamentoSelecionado===k?null:k; salvar(); renderPag(); };
-    d.innerHTML=`<strong>${p.titulo}</strong><div>${p.mensagem}</div>${p.chave?`<div class="pix-chave">${p.chave}</div>`:''}`;
+    let html=`<strong>${p.titulo}</strong><div>${p.mensagem}</div>`;
+    if(k==='pix'&&pagamentoSelecionado==='pix'){
+      const pix=gerarPix('5591981894966',parseFloat(totalSpan.textContent));
+      html+=`<div class="pix-chave"><strong>PIX Copia e Cola:</strong><br>${pix}</div>`;
+    }
+    d.innerHTML=html;
     pagamentosDiv.appendChild(d);
   });
 }
@@ -201,16 +212,8 @@ document.getElementById('finalizar').onclick=()=>{
 
   window.open('https://wa.me/5551981894966?text='+encodeURIComponent(msg));
 
-  /* === LIMPAR TELA APÓS ENVIO === */
-  carrinho=[];
-  carrinhoBloqueado=false;
-  pagamentoSelecionado=null;
-  document.getElementById('telefone').value='';
-  document.getElementById('nomeCliente').value='';
-  localStorage.removeItem(STORAGE_KEY);
-  localStorage.removeItem(STATE_KEY);
-  renderPag();
-  atualizar();
+  carrinho=[]; carrinhoBloqueado=false; pagamentoSelecionado=null;
+  localStorage.clear(); atualizar(); renderPag();
 };
 </script>
 
