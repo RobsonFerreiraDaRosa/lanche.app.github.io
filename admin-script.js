@@ -51,10 +51,6 @@ function verificarLogin() {
     const senhaInput = document.getElementById('senhaAdmin');
     const senha = senhaInput.value;
     
-    console.log("Senha digitada:", senha);
-    console.log("Senha configurada:", ADMIN_PASSWORD);
-    console.log("São iguais?", senha === ADMIN_PASSWORD);
-    
     if (senha === ADMIN_PASSWORD) {
         isAuthenticated = true;
         document.getElementById('loginScreen').style.display = 'none';
@@ -167,10 +163,85 @@ function showNotification(type, message) {
     }, 5000);
 }
 
+// ===== CAPTURAR VALORES ATUAIS DOS FORMULÁRIOS =====
+function capturarValoresDosFormularios() {
+    console.log("📝 Capturando valores dos formulários...");
+    
+    // Capturar Configurações Gerais
+    const sistemaNomeEl = document.getElementById('sistemaNome');
+    const whatsappNumeroEl = document.getElementById('whatsappNumero');
+    
+    if (sistemaNomeEl) {
+        sistemaConfig.nome = sistemaNomeEl.value.trim() || "TRIBO BAR";
+    }
+    if (whatsappNumeroEl) {
+        sistemaConfig.whatsapp = whatsappNumeroEl.value.trim() || "5551981894966";
+    }
+    
+    // Capturar Configurações PIX
+    const pixChaveEl = document.getElementById('pixChave');
+    const pixNomeBeneficiarioEl = document.getElementById('pixNomeBeneficiario');
+    const pixCidadeEl = document.getElementById('pixCidade');
+    const pixUsarCodigoEl = document.getElementById('pixUsarCodigo');
+    const pixPrefixoEl = document.getElementById('pixPrefixo');
+    const pixProximoCodigoEl = document.getElementById('pixProximoCodigo');
+    
+    if (pixChaveEl) {
+        pixConfig.chave = pixChaveEl.value.trim() || "43979611000136";
+    }
+    if (pixNomeBeneficiarioEl) {
+        pixConfig.nomeBeneficiario = pixNomeBeneficiarioEl.value.trim() || "TRIBO BAR";
+    }
+    if (pixCidadeEl) {
+        pixConfig.cidade = pixCidadeEl.value.trim() || "LAJEADO";
+    }
+    if (pixUsarCodigoEl) {
+        pixConfig.usarCodigoTransferencia = pixUsarCodigoEl.checked;
+    }
+    if (pixPrefixoEl) {
+        pixConfig.prefixoCodigo = pixPrefixoEl.value.trim() || "TRB";
+    }
+    if (pixProximoCodigoEl) {
+        const valor = parseInt(pixProximoCodigoEl.value);
+        pixConfig.codigoAtual = isNaN(valor) || valor < 1 ? 1 : valor;
+    }
+    
+    console.log("✅ Valores capturados:", {
+        sistema: sistemaConfig,
+        pix: pixConfig
+    });
+}
+
+// ===== RECARREGAR DADOS NOS FORMULÁRIOS =====
+function recarregarDadosNosFormularios() {
+    console.log("🔄 Recarregando dados nos formulários...");
+    
+    // 1. Recarregar configurações gerais
+    carregarConfiguracoesGerais();
+    
+    // 2. Recarregar configurações PIX
+    carregarConfiguracoesPIX();
+    
+    // 3. Recarregar categorias
+    carregarCategorias();
+    carregarSelectsCategorias();
+    
+    // 4. Recarregar itens
+    carregarItens();
+    
+    // 5. Atualizar status
+    atualizarStatus();
+    
+    console.log("✅ Dados recarregados nos formulários");
+}
+
 // ===== FUNÇÕES DE STORAGE =====
 function salvarDados() {
     try {
         console.log("💾 Salvando dados no localStorage...");
+        
+        // PRIMEIRO: Capturar valores atuais dos formulários
+        capturarValoresDosFormularios();
         
         // 1. Salvar MENU (sincronizado com sistema principal)
         localStorage.setItem(STORAGE_KEYS.MENU, JSON.stringify(menuData));
@@ -204,7 +275,10 @@ function salvarDados() {
         const timestamp = Date.now().toString();
         localStorage.setItem(STORAGE_KEYS.LAST_UPDATE, timestamp);
         
-        // 6. Tentar atualizar sistema principal se estiver disponível
+        // 6. Recarregar os dados nos formulários (IMPORTANTE!)
+        recarregarDadosNosFormularios();
+        
+        // 7. Tentar atualizar sistema principal se estiver disponível
         try {
             if (typeof window.atualizarSistemaExterno === 'function') {
                 window.atualizarSistemaExterno();
@@ -220,7 +294,6 @@ function salvarDados() {
         }
         
         showNotification("success", "Dados salvos com sucesso! O sistema principal será atualizado.");
-        atualizarStatus();
         
         // Atualizar timestamp
         const lastUpdateEl = document.getElementById('lastUpdate');
@@ -1559,22 +1632,71 @@ function configurarEventos() {
         });
     });
     
-    // Configurações gerais
+    // Configurações gerais - capturar mudanças em tempo real
     const sistemaNomeEl = document.getElementById('sistemaNome');
-    if (sistemaNomeEl) sistemaNomeEl.addEventListener('input', atualizarPreviewGeral);
+    const whatsappNumeroEl = document.getElementById('whatsappNumero');
     
-    // Configurações PIX
+    if (sistemaNomeEl) {
+        sistemaNomeEl.addEventListener('input', () => {
+            sistemaConfig.nome = sistemaNomeEl.value.trim() || "TRIBO BAR";
+            atualizarPreviewGeral();
+        });
+    }
+    
+    if (whatsappNumeroEl) {
+        whatsappNumeroEl.addEventListener('input', () => {
+            sistemaConfig.whatsapp = whatsappNumeroEl.value.trim() || "5551981894966";
+        });
+    }
+    
+    // Configurações PIX - capturar mudanças em tempo real
     const pixChaveEl = document.getElementById('pixChave');
-    if (pixChaveEl) pixChaveEl.addEventListener('input', atualizarInfoChavePIX);
-    
+    const pixNomeBeneficiarioEl = document.getElementById('pixNomeBeneficiario');
+    const pixCidadeEl = document.getElementById('pixCidade');
     const pixUsarCodigoEl = document.getElementById('pixUsarCodigo');
-    if (pixUsarCodigoEl) pixUsarCodigoEl.addEventListener('change', toggleCodigoConfig);
-    
     const pixPrefixoEl = document.getElementById('pixPrefixo');
-    if (pixPrefixoEl) pixPrefixoEl.addEventListener('input', atualizarPreviewCodigo);
-    
     const pixProximoCodigoEl = document.getElementById('pixProximoCodigo');
-    if (pixProximoCodigoEl) pixProximoCodigoEl.addEventListener('input', atualizarPreviewCodigo);
+    
+    if (pixChaveEl) {
+        pixChaveEl.addEventListener('input', () => {
+            pixConfig.chave = pixChaveEl.value.trim() || "43979611000136";
+            atualizarInfoChavePIX();
+        });
+    }
+    
+    if (pixNomeBeneficiarioEl) {
+        pixNomeBeneficiarioEl.addEventListener('input', () => {
+            pixConfig.nomeBeneficiario = pixNomeBeneficiarioEl.value.trim() || "TRIBO BAR";
+        });
+    }
+    
+    if (pixCidadeEl) {
+        pixCidadeEl.addEventListener('input', () => {
+            pixConfig.cidade = pixCidadeEl.value.trim() || "LAJEADO";
+        });
+    }
+    
+    if (pixUsarCodigoEl) {
+        pixUsarCodigoEl.addEventListener('change', () => {
+            pixConfig.usarCodigoTransferencia = pixUsarCodigoEl.checked;
+            toggleCodigoConfig();
+        });
+    }
+    
+    if (pixPrefixoEl) {
+        pixPrefixoEl.addEventListener('input', () => {
+            pixConfig.prefixoCodigo = pixPrefixoEl.value.trim() || "TRB";
+            atualizarPreviewCodigo();
+        });
+    }
+    
+    if (pixProximoCodigoEl) {
+        pixProximoCodigoEl.addEventListener('input', () => {
+            const valor = parseInt(pixProximoCodigoEl.value);
+            pixConfig.codigoAtual = isNaN(valor) || valor < 1 ? 1 : valor;
+            atualizarPreviewCodigo();
+        });
+    }
     
     const btnResetCodigo = document.getElementById('btnResetCodigo');
     if (btnResetCodigo) {
@@ -1583,6 +1705,7 @@ function configurarEventos() {
                 const pixProximoCodigoEl = document.getElementById('pixProximoCodigo');
                 if (pixProximoCodigoEl) {
                     pixProximoCodigoEl.value = 1;
+                    pixConfig.codigoAtual = 1;
                     atualizarPreviewCodigo();
                 }
             }
@@ -1700,7 +1823,8 @@ function configurarEventos() {
         btnRefreshPreview.addEventListener('click', () => {
             const iframe = document.getElementById('previewFrame');
             if (iframe) {
-                iframe.src = iframe.src;
+                const currentSrc = iframe.src.split('?')[0];
+                iframe.src = currentSrc + '?refresh=' + Date.now();
             }
         });
     }
@@ -1746,11 +1870,6 @@ window.atualizarSistemaExterno = function() {
     carregarDados();
     // Atualizar interface
     if (isAuthenticated) {
-        carregarConfiguracoesGerais();
-        carregarConfiguracoesPIX();
-        carregarCategorias();
-        carregarSelectsCategorias();
-        carregarItens();
-        atualizarStatus();
+        recarregarDadosNosFormularios();
     }
 };
