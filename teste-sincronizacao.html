@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste Sincronização</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .teste { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .sucesso { background: #d4edda; border-color: #c3e6cb; }
+        .erro { background: #f8d7da; border-color: #f5c6cb; }
+        button { margin: 5px; padding: 10px 15px; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Teste de Sincronização Admin → Sistema</h1>
+    
+    <div class="teste">
+        <h3>1. Verificar Dados Salvos</h3>
+        <button onclick="verificarDados()">Verificar Dados</button>
+        <div id="resultado"></div>
+    </div>
+    
+    <div class="teste">
+        <h3>2. Testar Sincronização</h3>
+        <button onclick="testarSalvar()">Salvar Dados de Teste</button>
+        <button onclick="testarCarregar()">Carregar no Sistema</button>
+        <div id="testeSync"></div>
+    </div>
+    
+    <div class="teste">
+        <h3>3. Comparar Sistemas</h3>
+        <button onclick="compararSistemas()">Comparar Admin vs Sistema</button>
+        <div id="comparacao"></div>
+    </div>
+    
+    <script>
+        const CHAVES = {
+            MENU: 'carrinho_tribo_menu',
+            PIX: 'carrinho_tribo_pix',
+            SISTEMA: 'tribo_sistema_config',
+            CODIGO: 'codigo_transferencia_tribo'
+        };
+        
+        function verificarDados() {
+            const resultado = document.getElementById('resultado');
+            let html = '<h4>Chaves no localStorage:</h4><ul>';
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const chave = localStorage.key(i);
+                if (chave.includes('tribo') || chave.includes('carrinho')) {
+                    const valor = localStorage.getItem(chave);
+                    html += `<li><strong>${chave}:</strong> ${valor.substring(0, 100)}${valor.length > 100 ? '...' : ''}</li>`;
+                }
+            }
+            
+            html += '</ul>';
+            resultado.innerHTML = html;
+        }
+        
+        function testarSalvar() {
+            // Dados de teste
+            const menuTeste = {
+                Salgados: [
+                    { nome: 'Teste Pastel', preco: 15, desc: 'Item de teste', obs: false }
+                ],
+                Bebidas: [
+                    { nome: 'Teste Refri', preco: 5, desc: 'Bebida teste', obs: true }
+                ]
+            };
+            
+            const pixTeste = {
+                chave: "12345678900",
+                nomeBeneficiario: "TESTE BAR",
+                cidade: "TESTE CITY",
+                usarCodigoTransferencia: true,
+                prefixoCodigo: "TST",
+                codigoAtual: 1
+            };
+            
+            // Salvar
+            localStorage.setItem(CHAVES.MENU, JSON.stringify(menuTeste));
+            localStorage.setItem(CHAVES.PIX, JSON.stringify(pixTeste));
+            localStorage.setItem('tribo_last_update', Date.now().toString());
+            
+            document.getElementById('testeSync').innerHTML = 
+                '<div class="sucesso">✅ Dados de teste salvos! Recarregue o sistema principal para ver.</div>';
+        }
+        
+        function testarCarregar() {
+            const menu = JSON.parse(localStorage.getItem(CHAVES.MENU) || '{}');
+            const pix = JSON.parse(localStorage.getItem(CHAVES.PIX) || '{}');
+            
+            let html = '<h4>Dados Carregados:</h4>';
+            html += `<p><strong>Menu:</strong> ${Object.keys(menu).length} categorias</p>`;
+            html += `<p><strong>PIX:</strong> ${pix.chave || 'Não configurado'}</p>`;
+            
+            document.getElementById('testeSync').innerHTML = html;
+        }
+        
+        function compararSistemas() {
+            const comparacao = document.getElementById('comparacao');
+            
+            // Dados do admin
+            const menuAdmin = JSON.parse(localStorage.getItem(CHAVES.MENU) || 'null');
+            const pixAdmin = JSON.parse(localStorage.getItem(CHAVES.PIX) || 'null');
+            
+            // Dados do sistema (simulado)
+            const menuSistema = JSON.parse(localStorage.getItem('carrinho_tribo_menu') || 'null');
+            const pixSistema = JSON.parse(localStorage.getItem('carrinho_tribo_pix') || 'null');
+            
+            let html = '<h4>Comparação:</h4>';
+            html += '<table border="1" cellpadding="10">';
+            html += '<tr><th>Item</th><th>Admin</th><th>Sistema</th><th>Status</th></tr>';
+            
+            // Comparar menu
+            const menuIgual = JSON.stringify(menuAdmin) === JSON.stringify(menuSistema);
+            html += `<tr>
+                <td>Menu</td>
+                <td>${menuAdmin ? Object.keys(menuAdmin).length + ' cats' : 'N/A'}</td>
+                <td>${menuSistema ? Object.keys(menuSistema).length + ' cats' : 'N/A'}</td>
+                <td>${menuIgual ? '✅ Sincronizado' : '❌ Diferente'}</td>
+            </tr>`;
+            
+            // Comparar PIX
+            const pixIgual = JSON.stringify(pixAdmin) === JSON.stringify(pixSistema);
+            html += `<tr>
+                <td>PIX</td>
+                <td>${pixAdmin?.chave || 'N/A'}</td>
+                <td>${pixSistema?.chave || 'N/A'}</td>
+                <td>${pixIgual ? '✅ Sincronizado' : '❌ Diferente'}</td>
+            </tr>`;
+            
+            html += '</table>';
+            
+            comparacao.innerHTML = html;
+        }
+        
+        // Executar verificação inicial
+        verificarDados();
+    </script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Admin</title>
+</head>
+<body style="font-family: Arial; padding: 20px;">
+    <h1>Debug Painel Admin</h1>
+    
+    <div>
+        <h3>Teste de Login:</h3>
+        <input type="password" id="testPassword" placeholder="Digite a senha">
+        <button onclick="testarLogin()">Testar Login</button>
+        <div id="resultado" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc;"></div>
+    </div>
+    
+    <div style="margin-top: 30px;">
+        <h3>Verificar Senha Configurada:</h3>
+        <button onclick="verificarSenha()">Verificar Senha</button>
+        <div id="senhaInfo" style="margin-top: 10px;"></div>
+    </div>
+    
+    <script>
+        // SENHA CONFIGURADA - VERIFIQUE SE É A MESMA
+        const ADMIN_PASSWORD = "jovemtribo"; // COLE AQUI A SENHA QUE VOCÊ CONFIGUROU
+        
+        function testarLogin() {
+            const senhaDigitada = document.getElementById('testPassword').value;
+            const resultado = document.getElementById('resultado');
+            
+            if (senhaDigitada === ADMIN_PASSWORD) {
+                resultado.innerHTML = '<span style="color: green; font-weight: bold;">✓ SUCESSO! Senha correta!</span>';
+                resultado.style.background = '#e8f5e8';
+            } else {
+                resultado.innerHTML = `
+                    <span style="color: red; font-weight: bold;">✗ ERRO! Senha incorreta.</span><br><br>
+                    <strong>Senha digitada:</strong> "${senhaDigitada}"<br>
+                    <strong>Senha configurada:</strong> "${ADMIN_PASSWORD}"<br>
+                    <strong>São iguais?</strong> ${senhaDigitada === ADMIN_PASSWORD ? 'SIM' : 'NÃO'}
+                `;
+                resultado.style.background = '#ffebee';
+            }
+        }
+        
+        function verificarSenha() {
+            const info = document.getElementById('senhaInfo');
+            info.innerHTML = `
+                <strong>Senha configurada no código:</strong> "${ADMIN_PASSWORD}"<br>
+                <strong>Tamanho:</strong> ${ADMIN_PASSWORD.length} caracteres<br>
+                <strong>Espaços no início/fim?</strong> ${ADMIN_PASSWORD !== ADMIN_PASSWORD.trim() ? 'SIM' : 'NÃO'}<br>
+                <strong>Caracteres especiais?</strong> ${/[^a-zA-Z0-9]/.test(ADMIN_PASSWORD) ? 'SIM' : 'NÃO'}
+            `;
+            info.style.background = '#e3f2fd';
+            info.style.padding = '10px';
+            info.style.borderRadius = '5px';
+        }
+        
+        // Mostrar info automaticamente
+        verificarSenha();
+    </script>
+</body>
+</html>

@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Admin - Tribo Bar</title>
+    <link rel="stylesheet" href="admin-style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- TELA DE LOGIN -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-container">
+            <div class="login-header">
+                <i class="fas fa-lock"></i>
+                <h2>Painel Administrativo</h2>
+                <p>Tribo Bar - Sistema de Pedidos</p>
+            </div>
+            
+            <div class="login-form">
+                <div class="input-group">
+                    <label for="senhaAdmin">
+                        <i class="fas fa-key"></i> Senha de Administrador
+                    </label>
+                    <input type="password" id="senhaAdmin" placeholder="Digite a senha">
+                    <div class="input-hint">
+                        <i class="fas fa-info-circle"></i>
+                        Senha definida no código (verifique admin-script.js)
+                    </div>
+                </div>
+                
+                <button id="btnLogin" class="btn-login">
+                    <i class="fas fa-sign-in-alt"></i> Acessar Painel
+                </button>
+                
+                <div class="login-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Atenção:</strong> Esta área é restrita. Mantenha a senha em segredo.
+                </div>
+            </div>
+            
+            <div class="login-footer">
+                <a href="index.html" class="back-link">
+                    <i class="fas fa-arrow-left"></i> Voltar para o sistema de pedidos
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAINEL PRINCIPAL (inicialmente oculto) -->
+    <div id="adminPanel" class="admin-panel" style="display: none;">
+        <!-- CABEÇALHO -->
+        <header class="admin-header">
+            <div class="header-left">
+                <h1><i class="fas fa-cogs"></i> Painel de Controle</h1>
+                <p class="subtitle">Tribo Bar - Configurações do Sistema</p>
+            </div>
+            <!-- No admin.html, dentro de .header-right -->
+			<div class="header-right">
+				<button id="btnLogout" class="btn-logout">
+					<i class="fas fa-sign-out-alt"></i> Sair
+				</button>
+				<button id="btnSincronizar" class="btn-sync" title="Sincronizar com sistema principal">
+					<i class="fas fa-sync-alt"></i> Sincronizar
+				</button>
+				<button id="btnSaveAll" class="btn-save">
+					<i class="fas fa-save"></i> Salvar Tudo
+				</button>
+			</div>
+        </header>
+
+        <!-- MENU LATERAL -->
+        <nav class="admin-sidebar">
+            <div class="sidebar-menu">
+                <div class="menu-section">
+                    <h3><i class="fas fa-sliders-h"></i> Configurações</h3>
+                    <a href="#config-geral" class="menu-item active" data-tab="config-geral">
+                        <i class="fas fa-store"></i> Geral
+                    </a>
+                    <a href="#config-pix" class="menu-item" data-tab="config-pix">
+                        <i class="fas fa-qrcode"></i> PIX
+                    </a>
+                </div>
+                
+                <div class="menu-section">
+                    <h3><i class="fas fa-utensils"></i> Cardápio</h3>
+                    <a href="#categorias" class="menu-item" data-tab="categorias">
+                        <i class="fas fa-tags"></i> Categorias
+                    </a>
+                    <a href="#itens" class="menu-item" data-tab="itens">
+                        <i class="fas fa-hamburger"></i> Itens
+                    </a>
+                    <a href="#precos" class="menu-item" data-tab="precos">
+                        <i class="fas fa-tag"></i> Preços em Lote
+                    </a>
+                </div>
+                
+                <div class="menu-section">
+                    <h3><i class="fas fa-tools"></i> Ferramentas</h3>
+                    <a href="#backup" class="menu-item" data-tab="backup">
+                        <i class="fas fa-database"></i> Backup
+                    </a>
+                    <a href="#preview" class="menu-item" data-tab="preview">
+                        <i class="fas fa-eye"></i> Preview
+                    </a>
+                </div>
+            </div>
+            
+            <div class="sidebar-status">
+                <div class="status-item">
+                    <span class="status-label">Itens no menu:</span>
+                    <span id="totalItems" class="status-value">0</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Categorias:</span>
+                    <span id="totalCategories" class="status-value">0</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Última alteração:</span>
+                    <span id="lastUpdate" class="status-value">--</span>
+                </div>
+            </div>
+        </nav>
+
+        <!-- CONTEÚDO PRINCIPAL -->
+        <main class="admin-content">
+            <!-- ABA: CONFIGURAÇÕES GERAIS -->
+            <section id="config-geral" class="tab-content active">
+                <div class="tab-header">
+                    <h2><i class="fas fa-store"></i> Configurações Gerais</h2>
+                    <p>Personalize o nome e aparência do sistema</p>
+                </div>
+                
+                <div class="form-section">
+                    <h3><i class="fas fa-sign"></i> Identificação do Sistema</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="sistemaNome">
+                                <i class="fas fa-heading"></i> Nome do Sistema
+                            </label>
+                            <input type="text" id="sistemaNome" 
+                                   placeholder="Ex: Tribo Bar" 
+                                   maxlength="30">
+                            <div class="form-hint">Aparece no topo da tela</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="whatsappNumero">
+                                <i class="fab fa-whatsapp"></i> WhatsApp para Pedidos
+                            </label>
+                            <input type="text" id="whatsappNumero" 
+                                   placeholder="5511999999999" 
+                                   pattern="\d*">
+                            <div class="form-hint">Número com código do país (ex: 5511999999999)</div>
+                        </div>
+                    </div>
+                    
+                    <div class="preview-box">
+                        <h4><i class="fas fa-desktop"></i> Preview do Cabeçalho</h4>
+                        <div class="header-preview">
+                            <div class="preview-logo">
+                                <i class="fas fa-store"></i>
+                            </div>
+                            <span id="previewNomeSistema" class="preview-titulo">Tribo Bar</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ABA: CONFIGURAÇÕES PIX -->
+            <section id="config-pix" class="tab-content">
+                <div class="tab-header">
+                    <h2><i class="fas fa-qrcode"></i> Configurações PIX</h2>
+                    <p>Configure a chave PIX e opções de pagamento</p>
+                </div>
+                
+                <div class="form-section">
+                    <h3><i class="fas fa-key"></i> Chave PIX</h3>
+                    
+                    <div class="alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <strong>Tipos de chave aceitos:</strong><br>
+                            • CNPJ (14 dígitos) • CPF (11 dígitos)<br>
+                            • Telefone (DDD + número) • Email • Chave Aleatória
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="pixChave">
+                            <i class="fas fa-barcode"></i> Chave PIX
+                        </label>
+                        <input type="text" id="pixChave" 
+                               placeholder="Digite a chave PIX">
+                        <div class="form-hint" id="pixTipoInfo">Tipo: Não identificado</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="pixNomeBeneficiario">
+                            <i class="fas fa-user-tie"></i> Nome do Beneficiário
+                        </label>
+                        <input type="text" id="pixNomeBeneficiario" 
+                               placeholder="Nome da empresa">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="pixCidade">
+                            <i class="fas fa-city"></i> Cidade
+                        </label>
+                        <input type="text" id="pixCidade" 
+                               placeholder="Cidade">
+                    </div>
+                    
+                    <div class="form-section">
+                        <h3><i class="fas fa-exchange-alt"></i> Código de Transferência</h3>
+                        <div class="toggle-group">
+                            <label class="toggle-label">
+                                <input type="checkbox" id="pixUsarCodigo">
+                                <span class="toggle-slider"></span>
+                                Usar código de transferência
+                            </label>
+                            <div class="form-hint">Gera códigos como TRB001, TRB002 para cada pedido</div>
+                        </div>
+                        
+                        <div id="codigoConfig" class="sub-form" style="display: none;">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="pixPrefixo">
+                                        <i class="fas fa-hashtag"></i> Prefixo do Código
+                                    </label>
+                                    <input type="text" id="pixPrefixo" 
+                                           placeholder="TRB" maxlength="10">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="pixProximoCodigo">
+                                        <i class="fas fa-forward"></i> Próximo Número
+                                    </label>
+                                    <input type="number" id="pixProximoCodigo" 
+                                           min="1" value="1">
+                                    <button type="button" id="btnResetCodigo" class="btn-small">
+                                        <i class="fas fa-redo"></i> Resetar
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="form-hint">
+                                Próximo código: <span id="proximoCodigoPreview" class="code-preview">TRB001</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ABA: GERENCIAR CATEGORIAS -->
+            <section id="categorias" class="tab-content">
+                <div class="tab-header">
+                    <h2><i class="fas fa-tags"></i> Gerenciar Categorias</h2>
+                    <p>Adicione, edite ou remova categorias do cardápio</p>
+                </div>
+                
+                <div class="two-column">
+                    <!-- LISTA DE CATEGORIAS -->
+                    <div class="column">
+                        <div class="list-header">
+                            <h3><i class="fas fa-list"></i> Categorias Existentes</h3>
+                            <span id="categoriasCount" class="count-badge">0 categorias</span>
+                        </div>
+                        
+                        <div id="categoriasList" class="sortable-list">
+                            <!-- Categorias serão carregadas aqui via JavaScript -->
+                            <div class="empty-state">
+                                <i class="fas fa-tags fa-2x"></i>
+                                <p>Nenhuma categoria cadastrada</p>
+                                <p class="empty-hint">Adicione sua primeira categoria usando o formulário ao lado</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- FORMULÁRIO DE CATEGORIA -->
+                    <div class="column">
+                        <div class="form-section">
+                            <h3><i class="fas fa-plus-circle"></i> Nova Categoria</h3>
+                            
+                            <div class="form-group">
+                                <label for="categoriaNome">
+                                    <i class="fas fa-heading"></i> Nome da Categoria
+                                </label>
+                                <input type="text" id="categoriaNome" 
+                                       placeholder="Ex: Bebidas, Sobremesas">
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button id="btnAddCategoria" class="btn-primary">
+                                    <i class="fas fa-plus"></i> Adicionar Categoria
+                                </button>
+                                <button id="btnUpdateCategoria" class="btn-secondary" style="display: none;">
+                                    <i class="fas fa-save"></i> Atualizar Categoria
+                                </button>
+                                <button id="btnCancelEdit" class="btn-text" style="display: none;">
+                                    <i class="fas fa-times"></i> Cancelar
+                                </button>
+                            </div>
+                            
+                            <div class="alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <div>
+                                    <strong>Atenção:</strong> Ao excluir uma categoria, 
+                                    todos os itens dentro dela também serão removidos.
+                                    Considere mover os itens antes de excluir.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ABA: GERENCIAR ITENS -->
+            <section id="itens" class="tab-content">
+                <div class="tab-header">
+                    <h2><i class="fas fa-hamburger"></i> Gerenciar Itens do Menu</h2>
+                    <p>Adicione, edite ou remova itens do cardápio</p>
+                </div>
+                
+                <!-- FILTROS E CONTROLES -->
+                <div class="controls-bar">
+                    <div class="filter-group">
+                        <select id="filterCategoria" class="filter-select">
+                            <option value="">Todas as categorias</option>
+                        </select>
+                        <input type="text" id="filterItem" 
+                               placeholder="Buscar item..." 
+                               class="filter-input">
+                    </div>
+                    
+                    <button id="btnAddItem" class="btn-primary">
+                        <i class="fas fa-plus"></i> Novo Item
+                    </button>
+                </div>
+                
+                <!-- LISTA DE ITENS -->
+                <div id="itensList" class="items-grid">
+                    <!-- Itens serão carregados aqui via JavaScript -->
+                    <div class="empty-state">
+                        <i class="fas fa-hamburger fa-2x"></i>
+                        <p>Nenhum item no cardápio</p>
+                        <p class="empty-hint">Adicione seu primeiro item clicando em "Novo Item"</p>
+                    </div>
+                </div>
+                
+                <!-- MODAL DE EDIÇÃO DE ITEM (oculto inicialmente) -->
+                <div id="itemModal" class="modal-overlay" style="display: none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3><i class="fas fa-edit"></i> <span id="modalTitle">Novo Item</span></h3>
+                            <button class="modal-close">&times;</button>
+                        </div>
+                        
+                        <div class="modal-body">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="itemNome">
+                                        <i class="fas fa-heading"></i> Nome do Item
+                                    </label>
+                                    <input type="text" id="itemNome" 
+                                           placeholder="Ex: Pastel de Carne">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="itemPreco">
+                                        <i class="fas fa-tag"></i> Preço (R$)
+                                    </label>
+                                    <input type="number" id="itemPreco" 
+                                           step="0.01" min="0" 
+                                           placeholder="0.00">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="itemCategoria">
+                                        <i class="fas fa-tag"></i> Categoria
+                                    </label>
+                                    <select id="itemCategoria">
+                                        <option value="">Selecione uma categoria</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group full-width">
+                                    <label for="itemDescricao">
+                                        <i class="fas fa-align-left"></i> Descrição
+                                    </label>
+                                    <textarea id="itemDescricao" 
+                                              placeholder="Descreva o item (opcional)"
+                                              rows="3"></textarea>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="toggle-label">
+                                        <input type="checkbox" id="itemPermiteObs">
+                                        <span class="toggle-slider"></span>
+                                        Permitir observação
+                                    </label>
+                                    <div class="form-hint">Cliente pode adicionar observação especial</div>
+                                </div>
+                            </div>
+                            
+                            <div class="preview-box">
+                                <h4><i class="fas fa-eye"></i> Preview do Item</h4>
+                                <div id="itemPreview" class="item-preview">
+                                    <div class="preview-header">
+                                        <h4 id="previewNome">Nome do Item</h4>
+                                        <span id="previewPreco" class="preview-price">R$ 0.00</span>
+                                    </div>
+                                    <p id="previewDesc" class="preview-desc">Descrição aparecerá aqui</p>
+                                    <div class="preview-footer">
+                                        <span class="preview-cat" id="previewCategoria">Categoria</span>
+                                        <span class="preview-obs" id="previewObsStatus">Sem observação</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="modal-footer">
+                            <button id="btnCancelItem" class="btn-text">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                            <button id="btnDeleteItem" class="btn-danger" style="display: none;">
+                                <i class="fas fa-trash"></i> Excluir Item
+                            </button>
+                            <button id="btnSaveItem" class="btn-primary">
+                                <i class="fas fa-save"></i> Salvar Item
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ABA: ALTERAR PREÇOS EM LOTE -->
+            <section id="precos" class="tab-content">
+                <div class="tab-header">
+                    <h2><i class="fas fa-tag"></i> Alterar Preços em Lote</h2>
+                    <p>Ajuste preços de múltiplos itens de uma vez</p>
+                </div>
+                
+                <div class="two-column">
+                    <!-- CONTROLES DE AJUSTE -->
+                    <div class="column">
+                        <div class="form-section">
+                            <h3><i class="fas fa-calculator"></i> Método de Ajuste</h3>
+                            
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="ajusteTipo" value="percentual" checked>
+                                    <span class="radio-custom"></span>
+                                    Aumento/Redução Percentual
+                                </label>
+                                
+                                <label class="radio-label">
+                                    <input type="radio" name="ajusteTipo" value="valor">
+                                    <span class="radio-custom"></span>
+                                    Adicionar/Subtrair Valor
+                                </label>
+                                
+                                <label class="radio-label">
+                                    <input type="radio" name="ajusteTipo" value="definir">
+                                    <span class="radio-custom"></span>
+                                    Definir Preço Fixo
+                                </label>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="ajusteValor">
+                                    <i class="fas fa-edit"></i> Valor do Ajuste
+                                </label>
+                                <div class="input-with-unit">
+                                    <input type="number" id="ajusteValor" 
+                                           step="0.01" placeholder="0.00">
+                                    <span id="ajusteUnidade" class="input-unit">%</span>
+                                </div>
+                                <div class="form-hint" id="ajusteDescricao">
+                                    Aumento/Redução percentual aplicado ao preço atual
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="ajusteCategoria">
+                                    <i class="fas fa-filter"></i> Aplicar à Categoria
+                                </label>
+                                <select id="ajusteCategoria">
+                                    <option value="">Todas as categorias</option>
+                                </select>
+                            </div>
+                            
+                            <button id="btnPreviewAjuste" class="btn-primary">
+                                <i class="fas fa-eye"></i> Visualizar Alterações
+                            </button>
+                            <button id="btnAplicarAjuste" class="btn-success" style="display: none;">
+                                <i class="fas fa-check"></i> Aplicar Alterações
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- PREVIEW DAS ALTERAÇÕES -->
+                    <div class="column">
+                        <div class="form-section">
+                            <h3><i class="fas fa-list-alt"></i> Resumo das Alterações</h3>
+                            
+                            <div id="ajustePreview" class="ajuste-preview">
+                                <div class="preview-placeholder">
+                                    <i class="fas fa-search-dollar fa-2x"></i>
+                                    <p>Visualize as alterações aqui</p>
+                                    <p class="empty-hint">Configure os parâmetros e clique em "Visualizar Alterações"</p>
+                                </div>
+                            </div>
+                            
+                            <div class="summary-box">
+                                <div class="summary-item">
+                                    <span>Itens afetados:</span>
+                                    <strong id="totalAfetados">0</strong>
+                                </div>
+                                <div class="summary-item">
+                                    <span>Valor total ajustado:</span>
+                                    <strong id="totalAjustado">R$ 0.00</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ABA: BACKUP E RESTAURAÇÃO -->
+            <section id="backup" class="tab-content">
+                <div class="tab-header">
+                    <h2><i class="fas fa-database"></i> Backup e Restauração</h2>
+                    <p>Faça backup de todas as configurações ou restaure de um backup anterior</p>
+                </div>
+                
+                <div class="two-column">
+                    <!-- EXPORTAR -->
+                    <div class="column">
+                        <div class="form-section">
+                            <h3><i class="fas fa-download"></i> Exportar Configurações</h3>
+                            
+                            <div class="info-card">
+                                <i class="fas fa-info-circle"></i>
+                                <div>
+                                    <strong>O que será exportado:</strong><br>
+                                    • Configurações gerais do sistema<br>
+                                    • Configurações PIX<br>
+                                    • Todas as categorias e itens do menu<br>
+                                    • Preços e configurações
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="backupNome">
+                                    <i class="fas fa-file-signature"></i> Nome do Backup
+                                </label>
+                                <input type="text" id="backupNome" 
+                                       placeholder="Ex: Backup Janeiro 2024"
+                                       value="Backup {{data atual}}">
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button id="btnExportJSON" class="btn-primary">
+                                    <i class="fas fa-file-code"></i> Exportar como JSON
+                                </button>
+                                <button id="btnExportTXT" class="btn-secondary">
+                                    <i class="fas fa-file-alt"></i> Exportar como Texto
+                                </button>
+                            </div>
+                            
+                            <div class="backup-history">
+                                <h4><i class="fas fa-history"></i> Últimos Backups</h4>
+                                <div id="backupList" class="history-list">
+                                    <!-- Lista de backups será carregada aqui -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- IMPORTAR -->
+                    <div class="column">
+                        <div class="form-section">
+                            <h3><i class="fas fa-upload"></i> Importar Configurações</h3>
+                            
+                            <div class="alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <div>
+                                    <strong>Atenção:</strong> Importar configurações substituirá 
+                                    todas as configurações atuais. Faça um backup antes de importar.
+                                </div>
+                            </div>
+                            
+                            <div class="drop-zone" id="dropZone">
+                                <i class="fas fa-cloud-upload-alt fa-2x"></i>
+                                <h4>Arraste e solte o arquivo JSON aqui</h4>
+                                <p>ou clique para selecionar</p>
+                                <input type="file" id="fileInput" accept=".json,.txt" style="display: none;">
+                            </div>
+                            
+                            <div id="filePreview" class="file-preview" style="display: none;">
+                                <div class="file-info">
+                                    <i class="fas fa-file"></i>
+                                    <div>
+                                        <strong id="fileName">arquivo.json</strong>
+                                        <span id="fileSize">0 KB</span>
+                                    </div>
+                                    <button id="btnRemoveFile" class="btn-icon">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                
+                                <div id="fileValidation" class="validation-result">
+                                    <!-- Validação será exibida aqui -->
+                                </div>
+                                
+                                <button id="btnImportFile" class="btn-success" disabled>
+                                    <i class="fas fa-check"></i> Importar Configurações
+                                </button>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="importText">
+                                    <i class="fas fa-paste"></i> Ou cole o JSON aqui:
+                                </label>
+                                <textarea id="importText" 
+                                          placeholder="Cole o conteúdo JSON aqui..."
+                                          rows="6"></textarea>
+                                <button id="btnImportText" class="btn-secondary">
+                                    <i class="fas fa-paste"></i> Importar do Texto
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ABA: PREVIEW -->
+            <section id="preview" class="tab-content">
+                <div class="tab-header">
+                    <h2><i class="fas fa-eye"></i> Preview do Sistema</h2>
+                    <p>Visualize como o sistema aparece para os clientes</p>
+                </div>
+                
+                <div class="preview-container">
+                    <div class="preview-header">
+                        <div class="preview-controls">
+                            <button id="btnRefreshPreview" class="btn-small">
+                                <i class="fas fa-redo"></i> Atualizar
+                            </button>
+                            <div class="device-toggle">
+                                <button class="device-btn active" data-device="mobile">
+                                    <i class="fas fa-mobile-alt"></i> Mobile
+                                </button>
+                                <button class="device-btn" data-device="tablet">
+                                    <i class="fas fa-tablet-alt"></i> Tablet
+                                </button>
+                                <button class="device-btn" data-device="desktop">
+                                    <i class="fas fa-desktop"></i> Desktop
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="preview-frame-container">
+                        <iframe id="previewFrame" src="index.html" 
+                                class="preview-frame mobile-view"></iframe>
+                    </div>
+                    
+                    <div class="preview-notes">
+                        <div class="note">
+                            <i class="fas fa-lightbulb"></i>
+                            <strong>Dica:</strong> As alterações feitas aqui não são salvas automaticamente 
+                            no preview. Clique em "Salvar Tudo" e depois "Atualizar" no preview.
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- NOTIFICAÇÕES -->
+        <div id="notifications" class="notifications"></div>
+    </div>
+
+    <script src="admin-script.js"></script>
+</body>
+</html>
