@@ -1583,8 +1583,48 @@ function alterarDevicePreview(device) {
     iframe.classList.add(`${device}-view`);
 }
 
+// ===== CONTROLE DO MENU MOBILE =====
+function toggleMenuMobile() {
+    const sidebar = document.querySelector('.admin-sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    
+    if (!sidebar) return;
+    
+    sidebar.classList.toggle('active');
+    
+    if (overlay) {
+        overlay.classList.toggle('active');
+    }
+}
+
+function closeMenuMobile() {
+    const sidebar = document.querySelector('.admin-sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    
+    if (sidebar) sidebar.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+}
+
 // ===== CONFIGURAÇÃO DE EVENTOS =====
 function configurarEventos() {
+	
+	{
+    // Ajustar padding do conteúdo para header fixo em mobile
+    function ajustarPaddingParaHeader() {
+        const adminContent = document.querySelector('.admin-content');
+        const adminHeader = document.querySelector('.admin-header');
+        
+        if (adminContent && adminHeader && window.innerWidth <= 768) {
+            const headerHeight = adminHeader.offsetHeight;
+            adminContent.style.paddingTop = (headerHeight + 16) + 'px';
+        }
+    }
+    
+    // Executar ao carregar e ao redimensionar
+    ajustarPaddingParaHeader();
+    window.addEventListener('resize', ajustarPaddingParaHeader);
+    
+}
     // Login
     const btnLogin = document.getElementById('btnLogin');
     const senhaAdmin = document.getElementById('senhaAdmin');
@@ -1607,6 +1647,21 @@ function configurarEventos() {
     // Sincronizar
     const btnSincronizar = document.getElementById('btnSincronizar');
     if (btnSincronizar) btnSincronizar.addEventListener('click', sincronizarComSistemaPrincipal);
+    
+    // Menu mobile toggle
+    const btnMenuToggle = document.getElementById('btnMenuToggle');
+    if (btnMenuToggle) {
+        btnMenuToggle.addEventListener('click', toggleMenuMobile);
+    }
+    
+    // Fechar menu ao clicar em um item (em mobile)
+    document.querySelectorAll('.menu-item').forEach(item => {
+        item.addEventListener('click', () => {
+            if (window.innerWidth <= 1024) {
+                closeMenuMobile();
+            }
+        });
+    });
     
     // Navegação por abas
     document.querySelectorAll('.menu-item').forEach(item => {
@@ -1858,6 +1913,19 @@ document.addEventListener('DOMContentLoaded', function() {
     if (senhaInput) {
         senhaInput.focus();
     }
+    
+    // Overlay para fechar menu
+    const overlay = document.querySelector('.sidebar-overlay');
+    if (overlay) {
+        overlay.addEventListener('click', closeMenuMobile);
+    }
+    
+    // Fechar menu ao redimensionar para desktop
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 1024) {
+            closeMenuMobile();
+        }
+    });
     
     console.log("Painel admin inicializado com sucesso!");
     console.log("Senha configurada:", ADMIN_PASSWORD);
