@@ -52,21 +52,25 @@
         <!-- CABEÇALHO -->
         <header class="admin-header">
             <div class="header-left">
-                <h1><i class="fas fa-cogs"></i> Painel de Controle</h1>
-                <p class="subtitle">Tribo Bar - Configurações do Sistema</p>
+                <button id="btnMenuToggle" class="btn-menu-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div>
+                    <h1><i class="fas fa-cogs"></i> Painel de Controle</h1>
+                    <p class="subtitle">Tribo Bar - Configurações do Sistema</p>
+                </div>
             </div>
-            <!-- No admin.html, dentro de .header-right -->
-			<div class="header-right">
-				<button id="btnLogout" class="btn-logout">
-					<i class="fas fa-sign-out-alt"></i> Sair
-				</button>
-				<button id="btnSincronizar" class="btn-sync" title="Sincronizar com sistema principal">
-					<i class="fas fa-sync-alt"></i> Sincronizar
-				</button>
-				<button id="btnSaveAll" class="btn-save">
-					<i class="fas fa-save"></i> Salvar Tudo
-				</button>
-			</div>
+            <div class="header-right">
+                <button id="btnLogout" class="btn-logout">
+                    <i class="fas fa-sign-out-alt"></i> Sair
+                </button>
+                <button id="btnSincronizar" class="btn-sync" title="Sincronizar com sistema principal">
+                    <i class="fas fa-sync-alt"></i> Sincronizar
+                </button>
+                <button id="btnSaveAll" class="btn-save">
+                    <i class="fas fa-save"></i> Salvar Tudo
+                </button>
+            </div>
         </header>
 
         <!-- MENU LATERAL -->
@@ -121,6 +125,9 @@
                 </div>
             </div>
         </nav>
+
+        <!-- OVERLAY PARA FECHAR MENU NO MOBILE -->
+        <div class="sidebar-overlay"></div>
 
         <!-- CONTEÚDO PRINCIPAL -->
         <main class="admin-content">
@@ -684,5 +691,4 @@
 
     <script src="admin-script.js"></script>
 </body>
-
 </html>
