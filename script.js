@@ -30,89 +30,119 @@ let pixConfig = {
 let menu = {};
 
 // ===== FUNÇÕES DE BANCO DE DADOS =====
+// ===== CARREGAR DADOS DO SISTEMA (CORRIGIDO) =====
 async function carregarDadosSistema() {
+    console.log("🔄 Carregando dados do sistema...");
+    
     try {
-        // Verificar se Supabase está disponível
-        if (!window.supabase) {
-            console.warn("Supabase não disponível. Usando dados padrão.");
-            return carregarDadosPadrao();
-        }
-        
-        // Inicializar cliente Supabase
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        
-        // 1. Carregar configurações do sistema
-        const { data: configData, error: configError } = await supabase
-            .from('sistema_config')
-            .select('*')
-            .eq('id', 1)
-            .single();
-        
-        if (!configError && configData) {
-            sistemaConfig = {
-                nome: configData.nome_sistema || "TRIBO BAR",
-                whatsapp: configData.whatsapp_numero || "5551981894966"
-            };
+        // Tentar carregar do Supabase
+        if (window.SupabaseDB) {
+            const dados = await window.SupabaseDB.carregarDadosParaPaginaPrincipal();
             
-            pixConfig = {
-                chave: configData.pix_chave || "43979611000136",
-                nomeBeneficiario: configData.pix_nome_beneficiario || "TRIBO BAR",
-                cidade: configData.pix_cidade || "LAJEADO",
-                usarCodigoTransferencia: configData.pix_usar_codigo || true,
-                prefixoCodigo: configData.pix_prefixo_codigo || "TRB",
-                codigoAtual: configData.pix_codigo_atual || 1
-            };
-            
-            console.log("✅ Configurações carregadas do Supabase");
-        } else {
-            console.warn("Usando configurações padrão");
-        }
-        
-        // 2. Carregar categorias e itens
-        const { data: categorias, error: categoriasError } = await supabase
-            .from('categorias')
-            .select('*')
-            .order('ordem');
-        
-        if (categoriasError) {
-            console.error("Erro ao carregar categorias:", categoriasError);
-            return carregarDadosPadrao();
-        }
-        
-        // Inicializar menu
-        menu = {};
-        
-        for (const categoria of categorias) {
-            const { data: itens, error: itensError } = await supabase
-                .from('itens_menu')
-                .select('*')
-                .eq('categoria_id', categoria.id)
-                .order('ordem');
-            
-            if (itensError) {
-                console.error(`Erro ao carregar itens da categoria ${categoria.nome}:`, itensError);
-                menu[categoria.nome] = [];
-                continue;
+            if (dados && dados.sistema) {
+                sistemaConfig = dados.sistema;
+                pixConfig = dados.pix;
+                menu = dados.menu;
+                
+                console.log("✅ Dados carregados do Supabase:");
+                console.log("- Sistema:", sistemaConfig.nome);
+                console.log("- WhatsApp:", sistemaConfig.whatsapp);
+                console.log("- Categorias:", Object.keys(menu).length);
+                
+                // Atualizar título da página
+                const tituloEl = document.querySelector('.titulo');
+                if (tituloEl) {
+                    tituloEl.textContent = sistemaConfig.nome;
+                }
+                
+                return true;
             }
-            
-            // Converter para formato esperado
-            menu[categoria.nome] = itens.map(item => ({
-                id: item.id,
-                nome: item.nome,
-                preco: parseFloat(item.preco),
-                desc: item.descricao || '',
-                obs: item.permite_observacao || false
-            }));
         }
         
-        console.log(`✅ Menu carregado: ${Object.keys(menu).length} categorias`);
-        return true;
+        // Se Supabase falhar, usar dados padrão
+        console.warn("⚠️ Usando dados padrão (fallback)");
+        return carregarDadosPadrao();
         
     } catch (error) {
-        console.error("Erro ao carregar dados:", error);
+        console.error("❌ Erro ao carregar dados:", error);
         return carregarDadosPadrao();
     }
 }
+
+function carregarDadosPadrao() {
+    sistemaConfig = {
+        nome: "TRIBO BAR",
+        whatsapp: "5551981894966"
+    };
+    
+    pixConfig = {
+        chave: "43979611000136",
+        nomeBeneficiario: "TRIBO BAR",
+        cidade: "LAJEADO",
+        usarCodigoTransferencia: true,
+        prefixoCodigo: "TRB",
+        codigoAtual: 1
+    };
+    
+    menu = {
+        Salgados: [
+            { id: 1, nome: 'Pastel Res', preco: 13, desc: 'Molho, frango, cebola e mussarela', obs: false },
+            { id: 2, nome: 'Pastel Frango', preco: 13, desc: 'Molho, frango, cebola e mussarela', obs: false }
+        ],
+        Doces: [
+            { id: 3, nome: 'Mini Pizza Chocolate Preto', preco: 13, desc: 'Chocolate ao Leite', obs: false }
+        ],
+        Bebidas: [
+            { id: 4, nome: 'Pitchulinha Fruki Guaraná 200ml', preco: 2.5, desc: 'Guaraná 200ml', obs: false }
+        ]
+    };
+    
+    // Atualizar título da página
+    const tituloEl = document.querySelector('.titulo');
+    if (tituloEl) {
+        tituloEl.textContent = sistemaConfig.nome;
+    }
+    
+    console.log("✅ Dados padrão carregados");
+    return false; // Indica que estamos usando fallback
+}
+
+// ===== INICIALIZAÇÃO (CORRIGIDA) =====
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log("🚀 Iniciando sistema Tribo Bar...");
+    
+    // 1. Carregar dados do sistema
+    await carregarDadosSistema();
+    
+    // 2. Configurar eventos de telefone
+    if (telefoneEl) {
+        telefoneEl.addEventListener('input', () => formatarTelefone(telefoneEl));
+        
+        telefoneEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace') {
+                setTimeout(() => formatarTelefone(telefoneEl), 10);
+            }
+        });
+    }
+    
+    // 3. Criar menu
+    criarMenu();
+    atualizarCarrinho();
+    renderizarPagamentos();
+    
+    if (telefoneEl && telefoneEl.value) {
+        formatarTelefone(telefoneEl);
+    }
+    
+    // 4. Verificar atualizações periódicas
+    setInterval(async () => {
+        console.log("🔄 Verificando atualizações...");
+        await carregarDadosSistema();
+        criarMenu();
+    }, 30000); // A cada 30 segundos
+    
+    console.log("✅ Sistema carregado com sucesso!");
+});
 
 function carregarDadosPadrao() {
     // Dados padrão de fallback
