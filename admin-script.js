@@ -28,28 +28,34 @@ let pixConfig = {
 let menuData = {};
 
 // ===== FUNÇÕES DE LOGIN =====
+// ===== FUNÇÕES DE LOGIN (CORRIGIDA) =====
 async function verificarLogin() {
     const senhaInput = document.getElementById('senhaAdmin');
-    const senha = senhaInput.value;
+    const senha = senhaInput.value.trim();
     
     if (!senha) {
         showNotification("error", "Digite a senha de administrador");
         return;
     }
     
+    console.log("🔐 Verificando senha...");
+    
     // Verificar senha no Supabase
     const resultado = await window.SupabaseDB?.verificarSenhaAdmin(senha);
+    
+    console.log("Resultado da verificação:", resultado);
     
     if (resultado?.sucesso) {
         isAuthenticated = true;
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('adminPanel').style.display = 'grid';
         
+        // Carregar dados do sistema
         await carregarDados();
         inicializarPainel();
         atualizarStatus();
         
-        showNotification("success", "Login realizado com sucesso!");
+        showNotification("success", resultado.mensagem || "Login realizado com sucesso!");
         
         // Limpar campo de senha
         senhaInput.value = '';
@@ -1442,3 +1448,4 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     console.log("Painel admin inicializado com sucesso!");
 });
+
