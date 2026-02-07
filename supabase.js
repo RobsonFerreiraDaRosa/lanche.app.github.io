@@ -1,6 +1,6 @@
 // ===== CONFIGURAÇÃO SUPABASE =====
-const SUPABASE_URL = 'https://seu-projeto.supabase.co'; // 🔧 ALTERE: Coloque sua URL do Supabase
-const SUPABASE_ANON_KEY = 'sua-chave-anon-key'; // 🔧 ALTERE: Coloque sua chave anônima
+const SUPABASE_URL = 'https://iezyvgvwmrbizsfpewdj.supabase.co'; // 🔧 ALTERE: Coloque sua URL do Supabase
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imllenl2Z3Z3bXJiaXpzZnBld2RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0NTk2NjEsImV4cCI6MjA4NjAzNTY2MX0.PnlxrstIPiLR_5pfVt1yuUB2CELzkGW_n09aYI508Xk'; // 🔧 ALTERE: Coloque sua chave anônima
 
 // Inicializar cliente Supabase
 const supabaseClient = window.supabase ? 
