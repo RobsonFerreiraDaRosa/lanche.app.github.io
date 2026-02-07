@@ -1,15 +1,10 @@
 // ===== CONFIGURAÇÕES =====
 const STORAGE_KEY = 'carrinho_tribo';
 const STATE_KEY = 'estado_tribo';
-const CODIGO_TRANSF_KEY = 'codigo_transferencia_tribo';
 
-// ===== CHAVES DO PAINEL ADMIN =====
-const STORAGE_KEYS = {
-    SISTEMA: "tribo_sistema_config",
-    PIX: "carrinho_tribo_pix",
-    MENU: "carrinho_tribo_menu",
-    LAST_UPDATE: "tribo_last_update"
-};
+// ===== CONFIGURAÇÃO SUPABASE =====
+const SUPABASE_URL = 'https://iezyvgvwmrbizsfpewdj.supabase.co'; // 🔧 ALTERE: Coloque sua URL do Supabase
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imllenl2Z3Z3bXJiaXpzZnBld2RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0NTk2NjEsImV4cCI6MjA4NjAzNTY2MX0.PnlxrstIPiLR_5pfVt1yuUB2CELzkGW_n09aYI508Xk'; // 🔧 ALTERE: Coloque sua chave anônima
 
 // ===== ESTADO GLOBAL =====
 let carrinho = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
@@ -17,109 +12,140 @@ let estado = JSON.parse(localStorage.getItem(STATE_KEY)) || {bloqueado: false, p
 let carrinhoBloqueado = estado.bloqueado;
 let pagamentoSelecionado = estado.pagamento;
 
-// ===== DADOS DO SISTEMA (CARREGADOS DO LOCALSTORAGE OU PADRÃO) =====
-function carregarConfiguracoes() {
-    // 1. Carregar CONFIGURAÇÕES DO SISTEMA
-    const sistemaStorage = localStorage.getItem(STORAGE_KEYS.SISTEMA);
-    if (sistemaStorage) {
-        const sistemaConfig = JSON.parse(sistemaStorage);
-        // Atualizar título do sistema
-        const tituloEl = document.querySelector('.titulo');
-        if (tituloEl && sistemaConfig.nome) {
-            tituloEl.textContent = sistemaConfig.nome;
+// ===== DADOS DO SISTEMA =====
+let sistemaConfig = {
+    nome: "TRIBO BAR",
+    whatsapp: "5551981894966"
+};
+
+let pixConfig = {
+    chave: "43979611000136",
+    nomeBeneficiario: "TRIBO BAR",
+    cidade: "LAJEADO",
+    usarCodigoTransferencia: true,
+    prefixoCodigo: "TRB",
+    codigoAtual: 1
+};
+
+let menu = {};
+
+// ===== FUNÇÕES DE BANCO DE DADOS =====
+async function carregarDadosSistema() {
+    try {
+        // Verificar se Supabase está disponível
+        if (!window.supabase) {
+            console.warn("Supabase não disponível. Usando dados padrão.");
+            return carregarDadosPadrao();
         }
         
-        // Atualizar número do WhatsApp se configurado
-        if (sistemaConfig.whatsapp) {
-            // Esta variável pode ser usada posteriormente
-            window.whatsappNumero = sistemaConfig.whatsapp;
-        }
-    }
-    
-    // 2. Carregar MENU do painel admin
-    const menuStorage = localStorage.getItem(STORAGE_KEYS.MENU);
-    if (menuStorage) {
-        try {
-            const menuData = JSON.parse(menuStorage);
-            console.log("✅ Menu carregado do localStorage:", Object.keys(menuData).length, "categorias");
-            return menuData;
-        } catch (error) {
-            console.error("❌ Erro ao carregar menu:", error);
-            return carregarMenuPadrao();
-        }
-    } else {
-        console.log("ℹ️  Usando menu padrão (nenhum menu salvo)");
-        return carregarMenuPadrao();
-    }
-}
-
-function carregarMenuPadrao() {
-    // Menu padrão (backup)
-    return {
-        Salgados: [
-            {nome: 'Pastel Res', preco: 13, desc: 'Molho, frango, cebola e mussarela', obs: false},
-            {nome: 'Pastel Frango', preco: 13, desc: 'Molho, frango, cebola e mussarela', obs: false},
-            {nome: 'Pastel Queijo', preco: 13, desc: 'Molho, frango, cebola e mussarela', obs: false},
-            {nome: 'Pastel Pizza', preco: 13, desc: 'Molho, frango, cebola e mussarela', obs: false},
-            {nome: 'Mini Pizza Frango', preco: 13, desc: 'Molho, frango, cebola e mussarela', obs: true},
-            {nome: 'Mini Pizza Strogonoff Carne', preco: 13, desc: 'Molho, carne, mussarela', obs: false}
-        ],
-        Doces: [
-            {nome: 'Mini Pizza Chocolate Preto', preco: 13, desc: 'Chocolate ao Leite', obs: false},
-            {nome: 'Mini Pizza Chocolate Branco', preco: 13, desc: 'Chocolate Branco', obs: false}
-        ],
-        Bebidas: [
-            {nome: 'Pitchulinha Fruki Guaraná 200ml', preco: 2.5, desc: 'Guaraná 200ml', obs: false},
-            {nome: 'Pitchulinha Coca-Cola Zero 200ml', preco: 2.5, desc: 'Coca Zero 200ml', obs: false},
-            {nome: 'Pitchulinha Coca-Cola 200ml', preco: 2.5, desc: 'Coca 200ml', obs: false}
-        ]
-    };
-}
-
-function carregarConfigPix() {
-    const pixStorage = localStorage.getItem(STORAGE_KEYS.PIX);
-    if (pixStorage) {
-        try {
-            const pixData = JSON.parse(pixStorage);
-            console.log("✅ Config PIX carregada do localStorage");
-            
-            // Carregar código atual do localStorage se disponível
-            const codigoAtual = JSON.parse(localStorage.getItem(CODIGO_TRANSF_KEY)) || (pixData.codigoAtual || 1);
-            
-            return {
-                chave: pixData.chave || "43979611000136",
-                nomeBeneficiario: pixData.nomeBeneficiario || "TRIBO BAR",
-                cidade: pixData.cidade || "LAJEADO",
-                usarCodigoTransferencia: pixData.usarCodigoTransferencia !== undefined ? 
-                    pixData.usarCodigoTransferencia : true,
-                prefixoCodigo: pixData.prefixoCodigo || "TRB",
-                codigoAtual: codigoAtual
+        // Inicializar cliente Supabase
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // 1. Carregar configurações do sistema
+        const { data: configData, error: configError } = await supabase
+            .from('sistema_config')
+            .select('*')
+            .eq('id', 1)
+            .single();
+        
+        if (!configError && configData) {
+            sistemaConfig = {
+                nome: configData.nome_sistema || "TRIBO BAR",
+                whatsapp: configData.whatsapp_numero || "5551981894966"
             };
-        } catch (error) {
-            console.error("❌ Erro ao carregar PIX:", error);
-            return carregarConfigPixPadrao();
+            
+            pixConfig = {
+                chave: configData.pix_chave || "43979611000136",
+                nomeBeneficiario: configData.pix_nome_beneficiario || "TRIBO BAR",
+                cidade: configData.pix_cidade || "LAJEADO",
+                usarCodigoTransferencia: configData.pix_usar_codigo || true,
+                prefixoCodigo: configData.pix_prefixo_codigo || "TRB",
+                codigoAtual: configData.pix_codigo_atual || 1
+            };
+            
+            console.log("✅ Configurações carregadas do Supabase");
+        } else {
+            console.warn("Usando configurações padrão");
         }
-    } else {
-        console.log("ℹ️  Usando configuração PIX padrão");
-        return carregarConfigPixPadrao();
+        
+        // 2. Carregar categorias e itens
+        const { data: categorias, error: categoriasError } = await supabase
+            .from('categorias')
+            .select('*')
+            .order('ordem');
+        
+        if (categoriasError) {
+            console.error("Erro ao carregar categorias:", categoriasError);
+            return carregarDadosPadrao();
+        }
+        
+        // Inicializar menu
+        menu = {};
+        
+        for (const categoria of categorias) {
+            const { data: itens, error: itensError } = await supabase
+                .from('itens_menu')
+                .select('*')
+                .eq('categoria_id', categoria.id)
+                .order('ordem');
+            
+            if (itensError) {
+                console.error(`Erro ao carregar itens da categoria ${categoria.nome}:`, itensError);
+                menu[categoria.nome] = [];
+                continue;
+            }
+            
+            // Converter para formato esperado
+            menu[categoria.nome] = itens.map(item => ({
+                id: item.id,
+                nome: item.nome,
+                preco: parseFloat(item.preco),
+                desc: item.descricao || '',
+                obs: item.permite_observacao || false
+            }));
+        }
+        
+        console.log(`✅ Menu carregado: ${Object.keys(menu).length} categorias`);
+        return true;
+        
+    } catch (error) {
+        console.error("Erro ao carregar dados:", error);
+        return carregarDadosPadrao();
     }
 }
 
-function carregarConfigPixPadrao() {
-    // Configuração PIX padrão
-    return {
+function carregarDadosPadrao() {
+    // Dados padrão de fallback
+    sistemaConfig = {
+        nome: "TRIBO BAR",
+        whatsapp: "5551981894966"
+    };
+    
+    pixConfig = {
         chave: "43979611000136",
         nomeBeneficiario: "TRIBO BAR",
         cidade: "LAJEADO",
         usarCodigoTransferencia: true,
         prefixoCodigo: "TRB",
-        codigoAtual: JSON.parse(localStorage.getItem(CODIGO_TRANSF_KEY)) || 1
+        codigoAtual: 1
     };
+    
+    menu = {
+        Salgados: [
+            { id: 1, nome: 'Pastel Res', preco: 13, desc: 'Molho, frango, cebola e mussarela', obs: false },
+            { id: 2, nome: 'Pastel Frango', preco: 13, desc: 'Molho, frango, cebola e mussarela', obs: false }
+        ],
+        Doces: [
+            { id: 3, nome: 'Mini Pizza Chocolate Preto', preco: 13, desc: 'Chocolate ao Leite', obs: false }
+        ],
+        Bebidas: [
+            { id: 4, nome: 'Pitchulinha Fruki Guaraná 200ml', preco: 2.5, desc: 'Guaraná 200ml', obs: false }
+        ]
+    };
+    
+    console.log("⚠️ Usando dados padrão");
+    return false;
 }
-
-// ===== DADOS DINÂMICOS =====
-let menu = carregarConfiguracoes();
-let configPix = carregarConfigPix();
 
 // ===== PAGAMENTOS =====
 const pagamentos = {
@@ -149,18 +175,18 @@ function salvar() {
 
 // ===== FUNÇÃO PARA GERAR CÓDIGO DE TRANSFERÊNCIA =====
 function gerarCodigoTransferencia() {
-    if (!configPix.usarCodigoTransferencia) {
+    if (!pixConfig.usarCodigoTransferencia) {
         return ""; // Retorna vazio se não estiver configurado para usar
     }
     
     // Gera código no formato: TRB001, TRB002, etc.
-    const codigo = `${configPix.prefixoCodigo}${configPix.codigoAtual.toString().padStart(3, '0')}`;
+    const codigo = `${pixConfig.prefixoCodigo}${pixConfig.codigoAtual.toString().padStart(3, '0')}`;
     
     // Incrementa para o próximo pedido
-    configPix.codigoAtual++;
+    pixConfig.codigoAtual++;
     
-    // Salva no localStorage
-    localStorage.setItem(CODIGO_TRANSF_KEY, configPix.codigoAtual.toString());
+    // Salvar no localStorage (temporário - em produção salvar no Supabase)
+    localStorage.setItem('codigo_transferencia_tribo', pixConfig.codigoAtual.toString());
     
     // Limita a 20 caracteres (limite do padrão PIX)
     return codigo.substring(0, 20);
@@ -291,9 +317,9 @@ function gerarPixCompleto(chaveIdentificada, valorReais, codigoTransferencia = "
     const campo53 = "5303986";
     const campo54 = "54" + tamanhoValor + valorFormatado;
     const campo58 = "5802BR";
-    const nomeLimitado = configPix.nomeBeneficiario.substring(0, 25);
+    const nomeLimitado = pixConfig.nomeBeneficiario.substring(0, 25);
     const campo59 = "59" + nomeLimitado.length.toString().padStart(2, '0') + nomeLimitado;
-    const cidadeLimitada = configPix.cidade.substring(0, 15);
+    const cidadeLimitada = pixConfig.cidade.substring(0, 15);
     const campo60 = "60" + cidadeLimitada.length.toString().padStart(2, '0') + cidadeLimitada;
     
     // 🔹 CAMPO 62: CÓDIGO DE TRANSFERÊNCIA (OPCIONAL)
@@ -331,14 +357,14 @@ function gerarPixCompleto(chaveIdentificada, valorReais, codigoTransferencia = "
 // ===== GERAR CÓDIGO PIX COM CÓDIGO DE TRANSFERÊNCIA =====
 function gerarCodigoPixCompleto(valorReais) {
     try {
-        const chaveIdentificada = identificarTipoChavePIX(configPix.chave);
+        const chaveIdentificada = identificarTipoChavePIX(pixConfig.chave);
         
         if (!chaveIdentificada.valida) {
-            throw new Error(`Chave PIX inválida: ${configPix.chave}. Tipo: ${chaveIdentificada.tipo}`);
+            throw new Error(`Chave PIX inválida: ${pixConfig.chave}. Tipo: ${chaveIdentificada.tipo}`);
         }
         
         // Gera código de transferência se configurado
-        const codigoTransferencia = configPix.usarCodigoTransferencia ? 
+        const codigoTransferencia = pixConfig.usarCodigoTransferencia ? 
                                     gerarCodigoTransferencia() : "";
         
         return gerarPixCompleto(chaveIdentificada, valorReais, codigoTransferencia);
@@ -373,6 +399,12 @@ function criarMenu() {
     
     // Limpar menu atual
     menuDiv.innerHTML = '';
+    
+    // Atualizar título do sistema
+    const tituloEl = document.querySelector('.titulo');
+    if (tituloEl) {
+        tituloEl.textContent = sistemaConfig.nome;
+    }
     
     Object.keys(menu).forEach(categoria => {
         const categoriaContainer = document.createElement('div');
@@ -539,7 +571,7 @@ function renderizarPagamentos() {
             const total = parseFloat(totalSpan.textContent);
             
             try {
-                const chaveInfo = identificarTipoChavePIX(configPix.chave);
+                const chaveInfo = identificarTipoChavePIX(pixConfig.chave);
                 
                 if (!chaveInfo.valida) {
                     throw new Error(`Chave PIX configurada é inválida`);
@@ -553,7 +585,7 @@ function renderizarPagamentos() {
                 pixContainer.style.borderTop = '1px solid rgba(255, 255, 255, 0.2)';
                 
                 // Mostrar código de transferência se estiver configurado
-                const infoCodigoTransferencia = configPix.usarCodigoTransferencia && pixInfo.codigoTransferencia !== "Não informado" 
+                const infoCodigoTransferencia = pixConfig.usarCodigoTransferencia && pixInfo.codigoTransferencia !== "Não informado" 
                 ? `<div style="display: flex; margin-bottom: 4px;">
                     <span style="color: rgba(255, 255, 255, 0.8); width: 90px;">Código Ref.:</span>
                     <span style="font-weight: bold; color: #ffcc80;">${pixInfo.codigoTransferencia}</span>
@@ -573,7 +605,7 @@ function renderizarPagamentos() {
                     <div style="font-size: 13px; margin-bottom: 8px;">
                     <div style="display: flex; margin-bottom: 4px;">
                         <span style="color: rgba(255, 255, 255, 0.8); width: 90px;">Beneficiário:</span>
-                        <span style="font-weight: bold;">${configPix.nomeBeneficiario}</span>
+                        <span style="font-weight: bold;">${pixConfig.nomeBeneficiario}</span>
                     </div>
                     <div style="display: flex; margin-bottom: 4px;">
                         <span style="color: rgba(255, 255, 255, 0.8); width: 90px;">Chave:</span>
@@ -608,7 +640,7 @@ function renderizarPagamentos() {
                 </div>
                 
                 <div style="font-size: 10px; color: rgba(255, 255, 255, 0.6); margin-top: 8px; text-align: center;">
-                    ${configPix.usarCodigoTransferencia ? `Código: ${pixInfo.codigoTransferencia} • ` : ''}Tamanho: ${pixInfo.tamanho} chars
+                    ${pixConfig.usarCodigoTransferencia ? `Código: ${pixInfo.codigoTransferencia} • ` : ''}Tamanho: ${pixInfo.tamanho} chars
                 </div>
                 `;
                 
@@ -925,26 +957,11 @@ if (finalizarEl) {
             return;
         }
         
-        // Carregar número do WhatsApp do sistema se disponível
-        const sistemaStorage = localStorage.getItem(STORAGE_KEYS.SISTEMA);
-        let numeroWhatsApp = '5551981894966'; // Padrão
-        
-        if (sistemaStorage) {
-            try {
-                const sistemaConfig = JSON.parse(sistemaStorage);
-                if (sistemaConfig.whatsapp) {
-                    numeroWhatsApp = sistemaConfig.whatsapp;
-                }
-            } catch (error) {
-                console.error("Erro ao carregar WhatsApp:", error);
-            }
-        }
-        
         // Gerar código de transferência para este pedido
-        const codigoTransferencia = configPix.usarCodigoTransferencia ? 
+        const codigoTransferencia = pixConfig.usarCodigoTransferencia ? 
                                     gerarCodigoTransferencia() : "";
         
-        let mensagem = `*NOVO PEDIDO - TRIBO BAR*\n\n`;
+        let mensagem = `*NOVO PEDIDO - ${sistemaConfig.nome}*\n\n`;
         mensagem += `👤 *Cliente:* ${nomeClienteEl.value}\n`;
         mensagem += `📞 *Telefone:* ${telefoneEl.value}\n\n`;
         mensagem += `🍕 *PEDIDO:*\n`;
@@ -962,7 +979,7 @@ if (finalizarEl) {
         if (pagamentoSelecionado === 'pix') {
             try {
                 const total = parseFloat(totalSpan.textContent);
-                const chaveInfo = identificarTipoChavePIX(configPix.chave);
+                const chaveInfo = identificarTipoChavePIX(pixConfig.chave);
                 const pixInfo = gerarPixCompleto(chaveInfo, total, codigoTransferencia);
                 
                 mensagem += `🔐 *DETALHES PIX:*\n`;
@@ -982,7 +999,7 @@ if (finalizarEl) {
         
         mensagem += `⏰ *Horário:* ${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`;
         
-        const url = `https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(mensagem)}`;
+        const url = `https://wa.me/${sistemaConfig.whatsapp}?text=${encodeURIComponent(mensagem)}`;
         window.open(url, '_blank');
         
         // Limpar carrinho
@@ -1007,37 +1024,29 @@ if (finalizarEl) {
     });
 }
 
-// ===== VERIFICAR ATUALIZAÇÕES DO PAINEL ADMIN =====
-function verificarAtualizacoes() {
-    const ultimaAtualizacao = localStorage.getItem(STORAGE_KEYS.LAST_UPDATE);
-    
-    if (ultimaAtualizacao !== window.ultimaAtualizacaoConhecida) {
-        console.log("🔄 Atualizando dados do painel admin...");
+// ===== VERIFICAR ATUALIZAÇÕES =====
+async function verificarAtualizacoes() {
+    try {
+        // Recarregar dados do Supabase periodicamente
+        await carregarDadosSistema();
         
-        // Recarregar dados
-        menu = carregarConfiguracoes();
-        configPix = carregarConfigPix();
-        
-        // Recriar menu na tela
+        // Recriar menu se necessário
         criarMenu();
         
         // Atualizar carrinho (caso itens tenham sido removidos)
         atualizarCarrinho();
         
-        window.ultimaAtualizacaoConhecida = ultimaAtualizacao;
-        console.log("✅ Dados atualizados do painel admin");
+    } catch (error) {
+        console.error("Erro ao verificar atualizações:", error);
     }
 }
 
 // ===== INICIALIZAÇÃO =====
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     console.log("🚀 Iniciando sistema Tribo Bar...");
     
-    // Inicializar verificação de atualizações
-    window.ultimaAtualizacaoConhecida = localStorage.getItem(STORAGE_KEYS.LAST_UPDATE);
-    
-    // Verificar atualizações a cada 2 segundos
-    setInterval(verificarAtualizacoes, 2000);
+    // Carregar dados do Supabase
+    await carregarDadosSistema();
     
     // Configurar eventos de telefone
     telefoneEl.addEventListener('input', () => formatarTelefone(telefoneEl));
@@ -1057,12 +1066,14 @@ document.addEventListener('DOMContentLoaded', () => {
         formatarTelefone(telefoneEl);
     }
     
+    // Verificar atualizações a cada 30 segundos
+    setInterval(verificarAtualizacoes, 30000);
+    
     console.log("✅ Sistema carregado com sucesso!");
     console.log("📊 Dados carregados:");
     console.log("- Categorias:", Object.keys(menu).length);
     console.log("- Total de itens:", Object.values(menu).reduce((acc, itens) => acc + itens.length, 0));
-    console.log("- Usar código transferência:", configPix.usarCodigoTransferencia);
-    console.log("- Próximo código:", configPix.prefixoCodigo + configPix.codigoAtual.toString().padStart(3, '0'));
+    console.log("- Usar código transferência:", pixConfig.usarCodigoTransferencia);
 });
 
 // Prevenir envio do formulário ao pressionar Enter
@@ -1075,25 +1086,16 @@ document.addEventListener('keydown', (e) => {
 // ===== FUNÇÕES DE DEBUG =====
 window.resetarCodigoTransferencia = function() {
     if (confirm("Deseja resetar o contador de códigos de transferência para 1?")) {
-        configPix.codigoAtual = 1;
-        localStorage.setItem(CODIGO_TRANSF_KEY, "1");
+        pixConfig.codigoAtual = 1;
+        localStorage.setItem('codigo_transferencia_tribo', "1");
         alert("Contador resetado para TRB001");
     }
 };
 
 window.mostrarInfoPix = function() {
     console.log("🔧 INFORMAÇÕES DO SISTEMA PIX:");
-    console.log("Chave configurada:", configPix.chave);
-    console.log("Tipo identificado:", identificarTipoChavePIX(configPix.chave));
-    console.log("Usar código transferência:", configPix.usarCodigoTransferencia);
-    console.log("Próximo código:", configPix.prefixoCodigo + configPix.codigoAtual.toString().padStart(3, '0'));
-    console.log("Comandos disponíveis:");
-    console.log("- resetarCodigoTransferencia() - Resetar contador");
-    console.log("- mostrarInfoPix() - Ver informações");
-};
-
-// Exportar função para atualização externa (usada pelo admin)
-window.atualizarSistemaExterno = function() {
-    console.log("🔄 Atualização solicitada pelo painel admin");
-    verificarAtualizacoes();
+    console.log("Chave configurada:", pixConfig.chave);
+    console.log("Tipo identificado:", identificarTipoChavePIX(pixConfig.chave));
+    console.log("Usar código transferência:", pixConfig.usarCodigoTransferencia);
+    console.log("Próximo código:", pixConfig.prefixoCodigo + pixConfig.codigoAtual.toString().padStart(3, '0'));
 };
