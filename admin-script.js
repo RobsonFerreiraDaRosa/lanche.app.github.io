@@ -1,14 +1,6 @@
 // ===== CONFIGURAÇÕES DE SEGURANÇA =====
-const ADMIN_PASSWORD = "jovemtribo"; // 🔐 ALTERE ESTA SENHA - SEM ESPAÇOS NO INÍCIO/FIM
-
-// ===== CHAVES DE ARMAZENAMENTO =====
-const STORAGE_KEYS = {
-    SISTEMA: "tribo_sistema_config",
-    PIX: "carrinho_tribo_pix",
-    MENU: "carrinho_tribo_menu",
-    BACKUP_HISTORY: "tribo_backup_history",
-    LAST_UPDATE: "tribo_last_update"
-};
+// A senha agora está no banco de dados Supabase
+// Verifique o arquivo supabase.js para configuração
 
 // ===== ESTADO GLOBAL =====
 let isAuthenticated = false;
@@ -33,30 +25,27 @@ let pixConfig = {
     codigoAtual: 1
 };
 
-let menuData = {
-    Salgados: [
-        { id: 1, nome: 'Pastel Res', preco: 13, desc: 'Molho, frango, cebola e mussarela', obs: false },
-        { id: 2, nome: 'Pastel Frango', preco: 13, desc: 'Molho, frango, cebola e mussarela', obs: false }
-    ],
-    Doces: [
-        { id: 3, nome: 'Mini Pizza Chocolate Preto', preco: 13, desc: 'Chocolate ao Leite', obs: false }
-    ],
-    Bebidas: [
-        { id: 4, nome: 'Pitchulinha Fruki Guaraná 200ml', preco: 2.5, desc: 'Guaraná 200ml', obs: false }
-    ]
-};
+let menuData = {};
 
 // ===== FUNÇÕES DE LOGIN =====
-function verificarLogin() {
+async function verificarLogin() {
     const senhaInput = document.getElementById('senhaAdmin');
     const senha = senhaInput.value;
     
-    if (senha === ADMIN_PASSWORD) {
+    if (!senha) {
+        showNotification("error", "Digite a senha de administrador");
+        return;
+    }
+    
+    // Verificar senha no Supabase
+    const resultado = await window.SupabaseDB?.verificarSenhaAdmin(senha);
+    
+    if (resultado?.sucesso) {
         isAuthenticated = true;
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('adminPanel').style.display = 'grid';
         
-        carregarDados();
+        await carregarDados();
         inicializarPainel();
         atualizarStatus();
         
@@ -65,7 +54,7 @@ function verificarLogin() {
         // Limpar campo de senha
         senhaInput.value = '';
     } else {
-        showNotification("error", "Senha incorreta!");
+        showNotification("error", resultado?.mensagem || "Senha incorreta!");
         
         // Destacar campo com erro
         senhaInput.style.borderColor = '#ef4444';
@@ -212,6 +201,75 @@ function capturarValoresDosFormularios() {
     });
 }
 
+// ===== FUNÇÕES DE STORAGE =====
+async function salvarDados() {
+    try {
+        console.log("💾 Salvando dados no Supabase...");
+        
+        // PRIMEIRO: Capturar valores atuais dos formulários
+        capturarValoresDosFormularios();
+        
+        // 1. Salvar configurações no Supabase
+        const resultado = await window.SupabaseDB?.salvarConfiguracoesSistema(sistemaConfig, pixConfig);
+        
+        if (!resultado?.sucesso) {
+            throw new Error(resultado?.mensagem || "Erro ao salvar configurações");
+        }
+        
+        console.log("✅ Configurações salvas no Supabase");
+        
+        // 2. Atualizar interface
+        recarregarDadosNosFormularios();
+        
+        showNotification("success", "Dados salvos com sucesso!");
+        
+        // Atualizar timestamp
+        const lastUpdateEl = document.getElementById('lastUpdate');
+        if (lastUpdateEl) {
+            lastUpdateEl.textContent = 
+                new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+        }
+        
+        // Atualizar preview do sistema
+        atualizarPreviewSistema();
+            
+    } catch (error) {
+        console.error("❌ Erro ao salvar dados:", error);
+        showNotification("error", "Erro ao salvar dados: " + error.message);
+    }
+}
+
+async function carregarDados() {
+    try {
+        console.log("📂 Carregando dados do Supabase...");
+        
+        // 1. Carregar configurações do sistema
+        const configs = await window.SupabaseDB?.carregarConfiguracoesSistema();
+        
+        if (configs?.sistema) {
+            sistemaConfig = configs.sistema;
+            console.log("✅ Config sistema carregada:", sistemaConfig.nome);
+        } else {
+            console.log("ℹ️  Usando configuração sistema padrão");
+        }
+        
+        if (configs?.pix) {
+            pixConfig = configs.pix;
+            console.log("✅ Config PIX carregada:", pixConfig.chave);
+        } else {
+            console.log("ℹ️  Usando configuração PIX padrão");
+        }
+        
+        // 2. Carregar menu do Supabase
+        menuData = await window.SupabaseDB?.carregarCategorias() || {};
+        console.log("✅ Menu carregado:", Object.keys(menuData).length, "categorias");
+        
+    } catch (error) {
+        console.error("❌ Erro ao carregar dados:", error);
+        showNotification("warning", "Erro ao carregar dados salvos. Usando configurações padrão.");
+    }
+}
+
 // ===== RECARREGAR DADOS NOS FORMULÁRIOS =====
 function recarregarDadosNosFormularios() {
     console.log("🔄 Recarregando dados nos formulários...");
@@ -235,138 +293,6 @@ function recarregarDadosNosFormularios() {
     console.log("✅ Dados recarregados nos formulários");
 }
 
-// ===== FUNÇÕES DE STORAGE =====
-function salvarDados() {
-    try {
-        console.log("💾 Salvando dados no localStorage...");
-        
-        // PRIMEIRO: Capturar valores atuais dos formulários
-        capturarValoresDosFormularios();
-        
-        // 1. Salvar MENU (sincronizado com sistema principal)
-        localStorage.setItem(STORAGE_KEYS.MENU, JSON.stringify(menuData));
-        console.log("✅ Menu salvo:", Object.keys(menuData).length, "categorias");
-        
-        // 2. Salvar CONFIGURAÇÕES PIX (sincronizado com sistema principal)
-        // Formatar igual ao sistema principal
-        const pixDataParaSistema = {
-            chave: pixConfig.chave,
-            nomeBeneficiario: pixConfig.nomeBeneficiario,
-            cidade: pixConfig.cidade,
-            usarCodigoTransferencia: pixConfig.usarCodigoTransferencia,
-            prefixoCodigo: pixConfig.prefixoCodigo,
-            codigoAtual: pixConfig.codigoAtual,
-            cnpjFormatado: pixConfig.chave.length === 14 ? 
-                pixConfig.chave.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5') : ''
-        };
-        
-        localStorage.setItem(STORAGE_KEYS.PIX, JSON.stringify(pixDataParaSistema));
-        console.log("✅ Config PIX salva:", pixConfig.chave);
-        
-        // 3. Salvar CONFIGURAÇÕES DO SISTEMA (geral)
-        localStorage.setItem(STORAGE_KEYS.SISTEMA, JSON.stringify(sistemaConfig));
-        console.log("✅ Config sistema salva:", sistemaConfig.nome);
-        
-        // 4. Salvar código de transferência atual
-        localStorage.setItem('codigo_transferencia_tribo', pixConfig.codigoAtual.toString());
-        
-        // 5. Forçar atualização do sistema principal
-        // Adiciona um timestamp para forçar recarregamento
-        const timestamp = Date.now().toString();
-        localStorage.setItem(STORAGE_KEYS.LAST_UPDATE, timestamp);
-        
-        // 6. Recarregar os dados nos formulários (IMPORTANTE!)
-        recarregarDadosNosFormularios();
-        
-        // 7. Tentar atualizar sistema principal se estiver disponível
-        try {
-            if (typeof window.atualizarSistemaExterno === 'function') {
-                window.atualizarSistemaExterno();
-            }
-            
-            // Tentar atualizar iframe de preview
-            const iframe = document.getElementById('previewFrame');
-            if (iframe && iframe.contentWindow && typeof iframe.contentWindow.atualizarSistemaExterno === 'function') {
-                iframe.contentWindow.atualizarSistemaExterno();
-            }
-        } catch (e) {
-            console.log("ℹ️  Sistema principal não está disponível para atualização imediata");
-        }
-        
-        showNotification("success", "Dados salvos com sucesso! O sistema principal será atualizado.");
-        
-        // Atualizar timestamp
-        const lastUpdateEl = document.getElementById('lastUpdate');
-        if (lastUpdateEl) {
-            lastUpdateEl.textContent = 
-                new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
-        }
-        
-        // Atualizar preview do sistema
-        atualizarPreviewSistema();
-            
-    } catch (error) {
-        console.error("❌ Erro ao salvar dados:", error);
-        showNotification("error", "Erro ao salvar dados: " + error.message);
-    }
-}
-
-function carregarDados() {
-    try {
-        console.log("📂 Carregando dados do localStorage...");
-        
-        // 1. Carregar MENU do sistema principal
-        const menuStorage = localStorage.getItem(STORAGE_KEYS.MENU);
-        if (menuStorage) {
-            menuData = JSON.parse(menuStorage);
-            console.log("✅ Menu carregado:", Object.keys(menuData).length, "categorias");
-        } else {
-            console.log("ℹ️  Usando menu padrão (nenhum menu salvo)");
-        }
-        
-        // 2. Carregar CONFIGURAÇÕES PIX do sistema principal
-        const pixStorage = localStorage.getItem(STORAGE_KEYS.PIX);
-        if (pixStorage) {
-            const pixData = JSON.parse(pixStorage);
-            
-            // Mapear para estrutura do admin
-            pixConfig = {
-                chave: pixData.chave || "43979611000136",
-                nomeBeneficiario: pixData.nomeBeneficiario || "TRIBO BAR",
-                cidade: pixData.cidade || "LAJEADO",
-                usarCodigoTransferencia: pixData.usarCodigoTransferencia !== undefined ? 
-                    pixData.usarCodigoTransferencia : true,
-                prefixoCodigo: pixData.prefixoCodigo || "TRB",
-                codigoAtual: pixData.codigoAtual || 1
-            };
-            
-            console.log("✅ Config PIX carregada:", pixConfig.chave);
-        } else {
-            console.log("ℹ️  Usando configuração PIX padrão");
-        }
-        
-        // 3. Carregar CONFIGURAÇÕES DO SISTEMA
-        const sistemaStorage = localStorage.getItem(STORAGE_KEYS.SISTEMA);
-        if (sistemaStorage) {
-            sistemaConfig = JSON.parse(sistemaStorage);
-            console.log("✅ Config sistema carregada:", sistemaConfig.nome);
-        } else {
-            console.log("ℹ️  Usando configuração sistema padrão");
-        }
-        
-        // 4. Carregar CÓDIGO DE TRANSFERÊNCIA do sistema principal
-        const codigoStorage = localStorage.getItem('codigo_transferencia_tribo');
-        if (codigoStorage) {
-            pixConfig.codigoAtual = parseInt(codigoStorage) || 1;
-            console.log("✅ Código transferência carregado:", pixConfig.codigoAtual);
-        }
-        
-    } catch (error) {
-        console.error("❌ Erro ao carregar dados:", error);
-        showNotification("warning", "Erro ao carregar dados salvos. Usando configurações padrão.");
-    }
-}
-
 // ===== FUNÇÃO PARA ATUALIZAR SISTEMA PRINCIPAL =====
 function atualizarPreviewSistema() {
     // Atualizar preview no painel admin
@@ -382,70 +308,23 @@ function atualizarPreviewSistema() {
         // Adiciona timestamp para evitar cache
         const timestamp = new Date().getTime();
         iframe.src = `index.html?refresh=${timestamp}`;
-        
-        // Adicionar listener para quando o iframe carregar
-        iframe.onload = function() {
-            console.log("✅ Preview iframe carregado");
-            // Tentar atualizar o sistema dentro do iframe
-            try {
-                if (iframe.contentWindow && typeof iframe.contentWindow.atualizarSistemaExterno === 'function') {
-                    setTimeout(() => {
-                        iframe.contentWindow.atualizarSistemaExterno();
-                    }, 1000);
-                }
-            } catch (e) {
-                console.log("ℹ️  Não foi possível atualizar o sistema dentro do iframe");
-            }
-        };
     }
     
     // Mostrar mensagem de sincronização
-    showNotification("info", "Sincronizando com sistema principal...");
+    showNotification("info", "Dados atualizados com sucesso!");
 }
 
 // ===== FUNÇÃO PARA FORÇAR SINCRONIZAÇÃO =====
-function sincronizarComSistemaPrincipal() {
-    console.log("🔄 Sincronizando dados com sistema principal...");
+async function sincronizarComSistemaPrincipal() {
+    console.log("🔄 Sincronizando dados...");
     
-    // 1. Atualizar menu no sistema principal
-    localStorage.setItem(STORAGE_KEYS.MENU, JSON.stringify(menuData));
+    // Recarregar dados do Supabase
+    await carregarDados();
     
-    // 2. Atualizar configurações PIX no sistema principal
-    const pixDataParaSistema = {
-        chave: pixConfig.chave,
-        nomeBeneficiario: pixConfig.nomeBeneficiario,
-        cidade: pixConfig.cidade,
-        usarCodigoTransferencia: pixConfig.usarCodigoTransferencia,
-        prefixoCodigo: pixConfig.prefixoCodigo,
-        codigoAtual: pixConfig.codigoAtual
-    };
-    
-    localStorage.setItem(STORAGE_KEYS.PIX, JSON.stringify(pixDataParaSistema));
-    
-    // 3. Atualizar código de transferência
-    localStorage.setItem('codigo_transferencia_tribo', pixConfig.codigoAtual.toString());
-    
-    // 4. Marcar como atualizado
-    const timestamp = Date.now().toString();
-    localStorage.setItem(STORAGE_KEYS.LAST_UPDATE, timestamp);
-    
-    // 5. Tentar atualizar sistema principal
-    try {
-        if (typeof window.atualizarSistemaExterno === 'function') {
-            window.atualizarSistemaExterno();
-        }
-    } catch (e) {
-        console.log("ℹ️  Sistema principal não disponível");
-    }
+    // Recarregar interface
+    recarregarDadosNosFormularios();
     
     showNotification("success", "Dados sincronizados com sucesso!");
-    
-    // Recarregar iframe de preview
-    const iframe = document.getElementById('previewFrame');
-    if (iframe) {
-        const currentSrc = iframe.src.split('?')[0];
-        iframe.src = currentSrc + '?refresh=' + Date.now();
-    }
     
     atualizarStatus();
 }
@@ -624,7 +503,7 @@ function atualizarPreviewCodigo() {
 }
 
 // ===== GERENCIAMENTO DE CATEGORIAS =====
-function carregarCategorias() {
+async function carregarCategorias() {
     const lista = document.getElementById('categoriasList');
     if (!lista) return;
     
@@ -678,15 +557,15 @@ function carregarCategorias() {
     });
     
     document.querySelectorAll('.btn-delete-categoria').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
             e.stopPropagation();
             const item = btn.closest('.sortable-item');
-            excluirCategoria(item.dataset.categoria);
+            await excluirCategoria(item.dataset.categoria);
         });
     });
 }
 
-function adicionarCategoria() {
+async function adicionarCategoria() {
     const categoriaNomeEl = document.getElementById('categoriaNome');
     if (!categoriaNomeEl) return;
     
@@ -702,18 +581,25 @@ function adicionarCategoria() {
         return;
     }
     
-    // Adicionar nova categoria
-    menuData[nome] = [];
+    // Adicionar nova categoria no Supabase
+    const resultado = await window.SupabaseDB?.salvarCategoria(nome);
     
-    // Salvar e atualizar
-    salvarDados();
-    carregarCategorias();
-    carregarSelectsCategorias();
-    
-    // Limpar formulário
-    categoriaNomeEl.value = '';
-    
-    showNotification("success", `Categoria "${nome}" adicionada com sucesso!`);
+    if (resultado?.sucesso) {
+        // Atualizar localmente
+        menuData[nome] = [];
+        
+        // Atualizar interface
+        await carregarDados();
+        carregarCategorias();
+        carregarSelectsCategorias();
+        
+        // Limpar formulário
+        categoriaNomeEl.value = '';
+        
+        showNotification("success", `Categoria "${nome}" adicionada com sucesso!`);
+    } else {
+        showNotification("error", resultado?.mensagem || "Erro ao adicionar categoria");
+    }
 }
 
 function editarCategoria(nomeAtual) {
@@ -737,7 +623,7 @@ function editarCategoria(nomeAtual) {
     categoriaNomeEl.focus();
 }
 
-function atualizarCategoria() {
+async function atualizarCategoria() {
     const categoriaNomeEl = document.getElementById('categoriaNome');
     if (!categoriaNomeEl) return;
     
@@ -753,14 +639,16 @@ function atualizarCategoria() {
         return;
     }
     
-    // Renomear categoria (se necessário)
+    // TODO: Implementar atualização no Supabase
+    // Por enquanto, atualiza localmente
     if (novoNome !== editingCategoriaId) {
         menuData[novoNome] = menuData[editingCategoriaId];
         delete menuData[editingCategoriaId];
     }
     
     // Salvar e atualizar
-    salvarDados();
+    await salvarDados();
+    await carregarDados();
     carregarCategorias();
     carregarSelectsCategorias();
     
@@ -770,15 +658,18 @@ function atualizarCategoria() {
     showNotification("success", `Categoria atualizada para "${novoNome}"!`);
 }
 
-function excluirCategoria(nome) {
+async function excluirCategoria(nome) {
     if (!confirm(`Tem certeza que deseja excluir a categoria "${nome}"?\n\nEsta ação irá excluir TODOS os ${menuData[nome].length} itens dentro desta categoria e não pode ser desfeita.`)) {
         return;
     }
     
+    // TODO: Implementar exclusão no Supabase
+    // Por enquanto, exclui localmente
     delete menuData[nome];
     
     // Salvar e atualizar
-    salvarDados();
+    await salvarDados();
+    await carregarDados();
     carregarCategorias();
     carregarSelectsCategorias();
     
@@ -883,7 +774,7 @@ function carregarItens() {
             </div>
             <p class="item-desc">${item.desc || 'Sem descrição'}</p>
             <div class="item-footer">
-                <span class="item-category">${item.categoria}</span>
+                <span class="item-category">${categoria}</span>
                 ${item.obs ? 
                     '<span class="item-obs"><i class="fas fa-comment"></i> Com observação</span>' : 
                     '<span class="item-obs"><i class="fas fa-comment-slash"></i> Sem observação</span>'
@@ -911,9 +802,9 @@ function carregarItens() {
     });
     
     document.querySelectorAll('.btn-delete-item').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
             const card = btn.closest('.item-card');
-            excluirItem(card.dataset.id);
+            await excluirItem(card.dataset.id);
         });
     });
 }
@@ -978,7 +869,7 @@ function encontrarItemPorId(id) {
     return null;
 }
 
-function salvarItem() {
+async function salvarItem() {
     const itemNomeEl = document.getElementById('itemNome');
     const itemPrecoEl = document.getElementById('itemPreco');
     const itemCategoriaEl = document.getElementById('itemCategoria');
@@ -1016,79 +907,44 @@ function salvarItem() {
         return;
     }
     
-    if (editingItemId) {
-        // Atualizar item existente
-        let itemEncontrado = false;
+    // Preparar item para salvar
+    const item = {
+        id: editingItemId,
+        nome,
+        preco,
+        desc: descricao,
+        obs: permiteObs,
+        categoria
+    };
+    
+    // Salvar no Supabase
+    const resultado = await window.SupabaseDB?.salvarItem(item);
+    
+    if (resultado?.sucesso) {
+        showNotification("success", resultado.mensagem);
         
-        for (const [cat, itens] of Object.entries(menuData)) {
-            const index = itens.findIndex(i => i.id === editingItemId);
-            if (index !== -1) {
-                // Remover da categoria antiga se mudou de categoria
-                if (cat !== categoria) {
-                    itens.splice(index, 1);
-                    menuData[categoria].push({
-                        id: editingItemId,
-                        nome,
-                        preco,
-                        desc: descricao,
-                        obs: permiteObs
-                    });
-                } else {
-                    // Atualizar na mesma categoria
-                    itens[index] = {
-                        id: editingItemId,
-                        nome,
-                        preco,
-                        desc: descricao,
-                        obs: permiteObs
-                    };
-                }
-                
-                itemEncontrado = true;
-                break;
-            }
-        }
+        // Recarregar dados
+        await carregarDados();
+        carregarItens();
+        atualizarStatus();
         
-        if (!itemEncontrado) {
-            showNotification("error", "Item não encontrado para atualização");
-            return;
-        }
-        
-        showNotification("success", `Item "${nome}" atualizado com sucesso!`);
+        // Fechar modal
+        fecharModalItem();
     } else {
-        // Adicionar novo item
-        const novoId = gerarNovoIdItem();
-        
-        menuData[categoria].push({
-            id: novoId,
-            nome,
-            preco,
-            desc: descricao,
-            obs: permiteObs
-        });
-        
-        showNotification("success", `Item "${nome}" adicionado com sucesso!`);
+        showNotification("error", resultado?.mensagem || "Erro ao salvar item");
     }
-    
-    // Salvar e atualizar
-    salvarDados();
-    carregarItens();
-    atualizarStatus();
-    
-    // Fechar modal
-    fecharModalItem();
 }
 
-function excluirItem(id) {
+async function excluirItem(id) {
     id = parseInt(id);
     let itemNome = '';
     let categoria = '';
     
-    // Encontrar item
+    // Encontrar item localmente
     for (const [cat, itens] of Object.entries(menuData)) {
-        const index = itens.findIndex(i => i.id === id);
-        if (index !== -1) {
-            itemNome = itens[index].nome;
+        const item = itens.find(i => i.id === id);
+        if (item) {
+            itemNome = item.nome;
             categoria = cat;
             break;
         }
@@ -1103,32 +959,22 @@ function excluirItem(id) {
         return;
     }
     
-    // Remover item
-    menuData[categoria] = menuData[categoria].filter(item => item.id !== id);
+    // Excluir no Supabase
+    const resultado = await window.SupabaseDB?.excluirItem(id);
     
-    // Salvar e atualizar
-    salvarDados();
-    carregarItens();
-    atualizarStatus();
-    
-    // Fechar modal se estiver aberto
-    fecharModalItem();
-    
-    showNotification("warning", `Item "${itemNome}" excluído com sucesso!`);
-}
-
-function gerarNovoIdItem() {
-    let maxId = 0;
-    
-    Object.values(menuData).forEach(itens => {
-        itens.forEach(item => {
-            if (item.id > maxId) {
-                maxId = item.id;
-            }
-        });
-    });
-    
-    return maxId + 1;
+    if (resultado?.sucesso) {
+        // Recarregar dados
+        await carregarDados();
+        carregarItens();
+        atualizarStatus();
+        
+        // Fechar modal se estiver aberto
+        fecharModalItem();
+        
+        showNotification("warning", `Item "${itemNome}" excluído com sucesso!`);
+    } else {
+        showNotification("error", resultado?.mensagem || "Erro ao excluir item");
+    }
 }
 
 function atualizarPreviewItem() {
@@ -1172,295 +1018,6 @@ function fecharModalItem() {
     editingItemId = null;
 }
 
-// ===== ALTERAÇÃO DE PREÇOS EM LOTE =====
-function previewAlteracaoPrecos() {
-    const tipoRadio = document.querySelector('input[name="ajusteTipo"]:checked');
-    const ajusteValorEl = document.getElementById('ajusteValor');
-    const ajusteCategoriaEl = document.getElementById('ajusteCategoria');
-    
-    if (!tipoRadio || !ajusteValorEl || !ajusteCategoriaEl) return;
-    
-    const tipo = tipoRadio.value;
-    const valor = parseFloat(ajusteValorEl.value);
-    const categoria = ajusteCategoriaEl.value;
-    
-    if (!valor && tipo !== 'definir') {
-        showNotification("error", "Digite um valor para o ajuste");
-        return;
-    }
-    
-    // Coletar itens afetados
-    const itensAfetados = [];
-    let totalAjuste = 0;
-    
-    Object.entries(menuData).forEach(([cat, itens]) => {
-        if (categoria && categoria !== cat) return;
-        
-        itens.forEach(item => {
-            let novoPreco = item.preco;
-            
-            switch(tipo) {
-                case 'percentual':
-                    novoPreco = item.preco * (1 + valor/100);
-                    break;
-                case 'valor':
-                    novoPreco = item.preco + valor;
-                    break;
-                case 'definir':
-                    novoPreco = valor;
-                    break;
-            }
-            
-            // Garantir preço mínimo
-            if (novoPreco < 0) novoPreco = 0;
-            
-            itensAfetados.push({
-                ...item,
-                categoria: cat,
-                novoPreco: parseFloat(novoPreco.toFixed(2))
-            });
-            
-            totalAjuste += Math.abs(novoPreco - item.preco);
-        });
-    });
-    
-    // Exibir preview
-    const previewDiv = document.getElementById('ajustePreview');
-    if (!previewDiv) return;
-    
-    if (itensAfetados.length === 0) {
-        previewDiv.innerHTML = `
-            <div class="preview-placeholder">
-                <i class="fas fa-search-dollar fa-2x"></i>
-                <p>Nenhum item será afetado</p>
-                <p class="empty-hint">Verifique os filtros selecionados</p>
-            </div>
-        `;
-        
-        const btnAplicarAjuste = document.getElementById('btnAplicarAjuste');
-        if (btnAplicarAjuste) btnAplicarAjuste.style.display = 'none';
-        return;
-    }
-    
-    let html = '';
-    itensAfetados.forEach(item => {
-        const diferenca = item.novoPreco - item.preco;
-        const sinal = diferenca >= 0 ? '+' : '';
-        
-        html += `
-            <div class="preview-item">
-                <div>
-                    <strong>${item.nome}</strong>
-                    <div style="font-size: 12px; color: #64748b;">${item.categoria}</div>
-                </div>
-                <div class="price-change">
-                    <span class="old-price">R$ ${item.preco.toFixed(2)}</span>
-                    <i class="fas fa-arrow-right" style="color: #94a3b8;"></i>
-                    <span class="new-price">R$ ${item.novoPreco.toFixed(2)}</span>
-                    <span style="color: ${diferenca >= 0 ? '#10b981' : '#ef4444'}; font-size: 12px;">
-                        (${sinal}${diferenca.toFixed(2)})
-                    </span>
-                </div>
-            </div>
-        `;
-    });
-    
-    previewDiv.innerHTML = html;
-    
-    // Atualizar resumo
-    const totalAfetadosEl = document.getElementById('totalAfetados');
-    const totalAjustadoEl = document.getElementById('totalAjustado');
-    
-    if (totalAfetadosEl) totalAfetadosEl.textContent = itensAfetados.length;
-    if (totalAjustadoEl) totalAjustadoEl.textContent = `R$ ${totalAjuste.toFixed(2)}`;
-    
-    // Mostrar botão aplicar
-    const btnAplicarAjuste = document.getElementById('btnAplicarAjuste');
-    if (btnAplicarAjuste) btnAplicarAjuste.style.display = 'inline-flex';
-    
-    // Armazenar dados para aplicação
-    window.previewAjusteData = {
-        itensAfetados,
-        tipo,
-        valor,
-        categoria
-    };
-}
-
-function aplicarAlteracaoPrecos() {
-    if (!window.previewAjusteData) {
-        showNotification("error", "Nenhuma alteração para aplicar");
-        return;
-    }
-    
-    const { itensAfetados } = window.previewAjusteData;
-    
-    // Aplicar alterações
-    itensAfetados.forEach(itemAfetado => {
-        for (const [cat, itens] of Object.entries(menuData)) {
-            const index = itens.findIndex(i => i.id === itemAfetado.id);
-            if (index !== -1) {
-                itens[index].preco = itemAfetado.novoPreco;
-                break;
-            }
-        }
-    });
-    
-    // Salvar e atualizar
-    salvarDados();
-    carregarItens();
-    atualizarStatus();
-    
-    // Resetar preview
-    const previewDiv = document.getElementById('ajustePreview');
-    const totalAfetadosEl = document.getElementById('totalAfetados');
-    const totalAjustadoEl = document.getElementById('totalAjustado');
-    const btnAplicarAjuste = document.getElementById('btnAplicarAjuste');
-    
-    if (previewDiv) {
-        previewDiv.innerHTML = `
-            <div class="preview-placeholder">
-                <i class="fas fa-check-circle fa-2x" style="color: #10b981"></i>
-                <p>Alterações aplicadas com sucesso!</p>
-            </div>
-        `;
-    }
-    
-    if (totalAfetadosEl) totalAfetadosEl.textContent = '0';
-    if (totalAjustadoEl) totalAjustadoEl.textContent = 'R$ 0.00';
-    if (btnAplicarAjuste) btnAplicarAjuste.style.display = 'none';
-    
-    window.previewAjusteData = null;
-    
-    showNotification("success", `Preços de ${itensAfetados.length} itens atualizados!`);
-}
-
-// ===== BACKUP E RESTAURAÇÃO =====
-function exportarDados(formato) {
-    const backupNomeEl = document.getElementById('backupNome');
-    const nome = backupNomeEl ? backupNomeEl.value || 
-                 `Backup_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}` : 
-                 `Backup_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}`;
-    
-    const dados = {
-        sistema: sistemaConfig,
-        pix: pixConfig,
-        menu: menuData,
-        metadata: {
-            exportadoEm: new Date().toISOString(),
-            versao: '1.0',
-            totalItens: Object.values(menuData).reduce((acc, itens) => acc + itens.length, 0),
-            totalCategorias: Object.keys(menuData).length
-        }
-    };
-    
-    let conteudo, extensao, tipoMIME;
-    
-    if (formato === 'json') {
-        conteudo = JSON.stringify(dados, null, 2);
-        extensao = 'json';
-        tipoMIME = 'application/json';
-    } else {
-        conteudo = `=== BACKUP SISTEMA TRIBO BAR ===\n`;
-        conteudo += `Data: ${new Date().toLocaleString('pt-BR')}\n`;
-        conteudo += `Total de categorias: ${dados.metadata.totalCategorias}\n`;
-        conteudo += `Total de itens: ${dados.metadata.totalItens}\n\n`;
-        
-        conteudo += `=== CONFIGURAÇÕES GERAIS ===\n`;
-        conteudo += `Nome: ${dados.sistema.nome}\n`;
-        conteudo += `WhatsApp: ${dados.sistema.whatsapp}\n\n`;
-        
-        conteudo += `=== CONFIGURAÇÕES PIX ===\n`;
-        conteudo += `Chave: ${dados.pix.chave}\n`;
-        conteudo += `Beneficiário: ${dados.pix.nomeBeneficiario}\n\n`;
-        
-        conteudo += `=== CARDÁPIO ===\n`;
-        Object.entries(dados.menu).forEach(([categoria, itens]) => {
-            conteudo += `\n[${categoria}]\n`;
-            itens.forEach(item => {
-                conteudo += `- ${item.nome}: R$ ${item.preco.toFixed(2)}`;
-                if (item.desc) conteudo += ` (${item.desc})`;
-                conteudo += `\n`;
-            });
-        });
-        
-        extensao = 'txt';
-        tipoMIME = 'text/plain';
-    }
-    
-    // Criar e baixar arquivo
-    const blob = new Blob([conteudo], { type: tipoMIME });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    
-    a.href = url;
-    a.download = `${nome}.${extensao}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    // Adicionar ao histórico
-    adicionarBackupHistorico(nome, formato);
-    
-    showNotification("success", `Backup "${nome}" exportado com sucesso!`);
-}
-
-function adicionarBackupHistorico(nome, formato) {
-    const historico = JSON.parse(localStorage.getItem(STORAGE_KEYS.BACKUP_HISTORY) || '[]');
-    
-    historico.unshift({
-        nome,
-        formato,
-        data: new Date().toISOString(),
-        tamanho: formato === 'json' ? 'JSON' : 'TXT'
-    });
-    
-    // Manter apenas últimos 10 backups
-    if (historico.length > 10) historico.pop();
-    
-    localStorage.setItem(STORAGE_KEYS.BACKUP_HISTORY, JSON.stringify(historico));
-    
-    carregarHistoricoBackups();
-}
-
-function carregarHistoricoBackups() {
-    const historico = JSON.parse(localStorage.getItem(STORAGE_KEYS.BACKUP_HISTORY) || '[]');
-    const lista = document.getElementById('backupList');
-    
-    if (!lista) return;
-    
-    if (historico.length === 0) {
-        lista.innerHTML = '<div class="empty-state">Nenhum backup encontrado</div>';
-        return;
-    }
-    
-    lista.innerHTML = '';
-    
-    historico.forEach(backup => {
-        const item = document.createElement('div');
-        item.className = 'history-item';
-        
-        const data = new Date(backup.data);
-        
-        item.innerHTML = `
-            <div style="display: flex; justify-content: space-between;">
-                <div>
-                    <strong>${backup.nome}</strong>
-                    <div style="font-size: 11px; color: #64748b;">
-                        ${data.toLocaleDateString('pt-BR')} ${data.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}
-                    </div>
-                </div>
-                <span style="background: #e2e8f0; color: #475569; padding: 2px 8px; border-radius: 12px; font-size: 11px;">
-                    ${backup.formato.toUpperCase()}
-                </span>
-            </div>
-        `;
-        
-        lista.appendChild(item);
-    });
-}
-
 // ===== DRAG AND DROP =====
 function configurarDragAndDrop() {
     const lista = document.getElementById('categoriasList');
@@ -1486,7 +1043,7 @@ function configurarDragAndDrop() {
         dragItem.classList.remove('dragging');
         dragItem = null;
         
-        // Atualizar ordem no objeto menuData
+        // Atualizar ordem no Supabase
         atualizarOrdemCategorias();
     });
     
@@ -1527,88 +1084,22 @@ function getDragAfterElement(container, y) {
     }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
-function atualizarOrdemCategorias() {
+async function atualizarOrdemCategorias() {
     const itens = Array.from(document.querySelectorAll('#categoriasList .sortable-item'));
+    const ordemCategorias = itens.map(item => item.dataset.categoria);
     
-    // Criar novo objeto com a ordem atual
-    const novoMenuData = {};
+    // Atualizar no Supabase
+    const resultado = await window.SupabaseDB?.atualizarOrdemCategorias(ordemCategorias);
     
-    itens.forEach(item => {
-        const categoria = item.dataset.categoria;
-        novoMenuData[categoria] = menuData[categoria];
-    });
-    
-    // Atualizar objeto principal
-    menuData = novoMenuData;
-    
-    // Salvar
-    salvarDados();
-    showNotification("success", "Ordem das categorias atualizada!");
-}
-
-// ===== PREVIEW DO SISTEMA =====
-function atualizarPreviewGeral() {
-    // Atualizar preview do nome do sistema
-    const sistemaNomeEl = document.getElementById('sistemaNome');
-    const nome = sistemaNomeEl ? sistemaNomeEl.value : sistemaConfig.nome;
-    
-    const previewEl = document.getElementById('previewNomeSistema');
-    if (previewEl) {
-        previewEl.textContent = nome;
+    if (resultado?.sucesso) {
+        showNotification("success", "Ordem das categorias atualizada!");
+    } else {
+        showNotification("error", resultado?.mensagem || "Erro ao atualizar ordem");
     }
-    
-    // Atualizar iframe
-    const iframe = document.getElementById('previewFrame');
-    if (iframe) {
-        // Recarregar com timestamp para evitar cache
-        const currentSrc = iframe.src.split('?')[0];
-        iframe.src = currentSrc + '?refresh=' + Date.now();
-    }
-}
-
-function alterarDevicePreview(device) {
-    const iframe = document.getElementById('previewFrame');
-    if (!iframe) return;
-    
-    // Atualizar botões
-    document.querySelectorAll('.device-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.device === device) {
-            btn.classList.add('active');
-        }
-    });
-    
-    // Atualizar iframe
-    iframe.classList.remove('mobile-view', 'tablet-view', 'desktop-view');
-    iframe.classList.add(`${device}-view`);
-}
-
-// ===== CONTROLE DO MENU MOBILE =====
-function toggleMenuMobile() {
-    const sidebar = document.querySelector('.admin-sidebar');
-    const overlay = document.querySelector('.sidebar-overlay');
-    
-    if (!sidebar) return;
-    
-    sidebar.classList.toggle('active');
-    
-    if (overlay) {
-        overlay.classList.toggle('active');
-    }
-}
-
-function closeMenuMobile() {
-    const sidebar = document.querySelector('.admin-sidebar');
-    const overlay = document.querySelector('.sidebar-overlay');
-    
-    if (sidebar) sidebar.classList.remove('active');
-    if (overlay) overlay.classList.remove('active');
 }
 
 // ===== CONFIGURAÇÃO DE EVENTOS =====
 function configurarEventos() {
-	
-	{
     // Ajustar padding do conteúdo para header fixo em mobile
     function ajustarPaddingParaHeader() {
         const adminContent = document.querySelector('.admin-content');
@@ -1624,7 +1115,6 @@ function configurarEventos() {
     ajustarPaddingParaHeader();
     window.addEventListener('resize', ajustarPaddingParaHeader);
     
-}
     // Login
     const btnLogin = document.getElementById('btnLogin');
     const senhaAdmin = document.getElementById('senhaAdmin');
@@ -1833,45 +1323,6 @@ function configurarEventos() {
     const itemPermiteObsEl = document.getElementById('itemPermiteObs');
     if (itemPermiteObsEl) itemPermiteObsEl.addEventListener('change', atualizarPreviewItem);
     
-    // Preços em lote
-    document.querySelectorAll('input[name="ajusteTipo"]').forEach(radio => {
-        radio.addEventListener('change', () => {
-            const tipo = radio.value;
-            const unidade = document.getElementById('ajusteUnidade');
-            const descricao = document.getElementById('ajusteDescricao');
-            
-            if (!unidade || !descricao) return;
-            
-            switch(tipo) {
-                case 'percentual':
-                    unidade.textContent = '%';
-                    descricao.textContent = 'Aumento/Redução percentual aplicado ao preço atual';
-                    break;
-                case 'valor':
-                    unidade.textContent = 'R$';
-                    descricao.textContent = 'Valor adicionado/subtraído do preço atual';
-                    break;
-                case 'definir':
-                    unidade.textContent = 'R$';
-                    descricao.textContent = 'Preço fixo definido para todos os itens';
-                    break;
-            }
-        });
-    });
-    
-    const btnPreviewAjuste = document.getElementById('btnPreviewAjuste');
-    if (btnPreviewAjuste) btnPreviewAjuste.addEventListener('click', previewAlteracaoPrecos);
-    
-    const btnAplicarAjuste = document.getElementById('btnAplicarAjuste');
-    if (btnAplicarAjuste) btnAplicarAjuste.addEventListener('click', aplicarAlteracaoPrecos);
-    
-    // Backup
-    const btnExportJSON = document.getElementById('btnExportJSON');
-    if (btnExportJSON) btnExportJSON.addEventListener('click', () => exportarDados('json'));
-    
-    const btnExportTXT = document.getElementById('btnExportTXT');
-    if (btnExportTXT) btnExportTXT.addEventListener('click', () => exportarDados('txt'));
-    
     // Preview
     const btnRefreshPreview = document.getElementById('btnRefreshPreview');
     if (btnRefreshPreview) {
@@ -1891,15 +1342,77 @@ function configurarEventos() {
     });
 }
 
+// ===== PREVIEW DO SISTEMA =====
+function atualizarPreviewGeral() {
+    // Atualizar preview do nome do sistema
+    const sistemaNomeEl = document.getElementById('sistemaNome');
+    const nome = sistemaNomeEl ? sistemaNomeEl.value : sistemaConfig.nome;
+    
+    const previewEl = document.getElementById('previewNomeSistema');
+    if (previewEl) {
+        previewEl.textContent = nome;
+    }
+    
+    // Atualizar iframe
+    const iframe = document.getElementById('previewFrame');
+    if (iframe) {
+        // Recarregar com timestamp para evitar cache
+        const currentSrc = iframe.src.split('?')[0];
+        iframe.src = currentSrc + '?refresh=' + Date.now();
+    }
+}
+
+function alterarDevicePreview(device) {
+    const iframe = document.getElementById('previewFrame');
+    if (!iframe) return;
+    
+    // Atualizar botões
+    document.querySelectorAll('.device-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.device === device) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Atualizar iframe
+    iframe.classList.remove('mobile-view', 'tablet-view', 'desktop-view');
+    iframe.classList.add(`${device}-view`);
+}
+
+// ===== CONTROLE DO MENU MOBILE =====
+function toggleMenuMobile() {
+    const sidebar = document.querySelector('.admin-sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    
+    if (!sidebar) return;
+    
+    sidebar.classList.toggle('active');
+    
+    if (overlay) {
+        overlay.classList.toggle('active');
+    }
+}
+
+function closeMenuMobile() {
+    const sidebar = document.querySelector('.admin-sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    
+    if (sidebar) sidebar.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+}
+
 // ===== INICIALIZAÇÃO =====
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log("Documento carregado - Iniciando painel admin...");
     
-    // Inicializar eventos de login PRIMEIRO
-    inicializarEventosLogin();
+    // Inicializar Supabase
+    const supabaseInicializado = await window.SupabaseDB?.inicializarSupabase();
+    if (!supabaseInicializado) {
+        console.warn("⚠️ Supabase não inicializado. Verifique a configuração.");
+    }
     
-    // Carregar histórico de backups
-    carregarHistoricoBackups();
+    // Inicializar eventos de login
+    inicializarEventosLogin();
     
     // Configurar data/hora atual
     const lastUpdateEl = document.getElementById('lastUpdate');
@@ -1928,16 +1441,4 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     console.log("Painel admin inicializado com sucesso!");
-    console.log("Senha configurada:", ADMIN_PASSWORD);
 });
-
-// Exportar função para atualização do sistema principal
-window.atualizarSistemaExterno = function() {
-    console.log("🔄 Atualização solicitada externamente");
-    // Recarregar dados do localStorage
-    carregarDados();
-    // Atualizar interface
-    if (isAuthenticated) {
-        recarregarDadosNosFormularios();
-    }
-};
